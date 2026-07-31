@@ -1,0 +1,1 @@
+{"investigation": "viva-biofilm-equivalence", "studies": [{"id": "study/chemostat-equivalence", "slug": "chemostat-equivalence", "type": "study", "label": "Chemostat equivalence: viva-biofilm vs analytic decay and real iDynoMiCS-2", "status": "complete"}], "study_edges": [], "chains": {"chemostat-equivalence": {"nodes": [], "edges": [], "violations": [], "derived": false}}}
