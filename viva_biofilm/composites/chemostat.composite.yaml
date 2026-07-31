@@ -1,0 +1,27 @@
+name: chemostat
+description: |
+  Well-mixed chemostat (Rust reimplementation of iDynoMiCS-2 ChemostatSolver);
+  matches protocols/chemostat.xml: solute1 decays at 0.1/day into solute2.
+tags: [chemostat, idynomics2, reproduction, rust]
+requires:
+  processes: [ChemostatProcess]
+state:
+  chemostat:
+    _type: process
+    address: "local:ChemostatProcess"
+    config:
+      dt_per_update: 1.0
+      spec:
+        solutes:
+        - {name: solute1, init: 2.0}
+        - {name: solute2, init: 2.0}
+        reactions:
+        - {substrate: solute1, k: 0.1, stoich: [[solute1, -1.0], [solute2, 0.5]]}
+    inputs: {}
+    outputs:
+      average_concentrations: [stores, average_concentrations]
+      time: [stores, time]
+    interval: 1.0
+  stores:
+    average_concentrations: {}
+    time: 0.0

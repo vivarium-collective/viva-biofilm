@@ -1,0 +1,19 @@
+schema_version: 2
+name: viva-biofilm
+created: '2026-07-31'
+package_path: viva_biofilm
+layout:
+  studies: workspace/studies
+  investigations: workspace/investigations
+  composites: viva_biofilm/composites
+  references: workspace/references
+  datasets: workspace/datasets
+  notes: workspace/notes
+  experiments: workspace/experiments
+  reports: reports
+observables: []
+visualizations: []
+simulations: []
+datasets: []
+server:
+  enabled: true
