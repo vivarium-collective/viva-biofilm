@@ -1,3 +1,5 @@
+import pytest
+
 import process_bigraph as pb
 from viva_biofilm.processes.biofilm_process import BiofilmProcess
 from viva_biofilm.processes.chemostat_process import ChemostatProcess
@@ -26,12 +28,38 @@ def test_biofilm_process_update_returns_readbacks():
     assert len(out["solute_fields"]["solute"]) == 16 * 32
 
 def test_biofilm_process_honors_boundary_concentrations():
+    # average_concentrations is a per-step DELTA (accumulate) port. BIOFILM_SPEC's
+    # oxygen bulk starts at 8.74, and grid.rs force-sets the Dirichlet top row to
+    # `bulk` on every solve — so once the field is near steady state (delta ~0),
+    # raising the bulk mid-run must pull the field up, producing a clearly
+    # POSITIVE oxygen delta on the very next update. Two identically-seeded
+    # processes (same spec -> same deterministic RNG/agent placement) are warmed
+    # up in lockstep with empty boundary_concentrations; only one then gets the
+    # push. If the wiring were broken (loop never runs, wrong arg order, the
+    # pyo3 call silently swallowed), the pushed run would be indistinguishable
+    # from the control — this comparison catches that.
+    def make_proc():
+        return BiofilmProcess({"spec": BIOFILM_SPEC, "dt_per_update": 0.05}, core=pb.allocate_core())
+
+    proc_pushed = make_proc()
+    proc_control = make_proc()
+
+    for _ in range(3):
+        proc_pushed.update({"boundary_concentrations": {}}, 0.05)
+        proc_control.update({"boundary_concentrations": {}}, 0.05)
+
+    out_pushed = proc_pushed.update({"boundary_concentrations": {"oxygen": 20.0}}, 0.05)
+    out_control = proc_control.update({"boundary_concentrations": {}}, 0.05)
+
+    assert out_pushed["average_concentrations"]["oxygen"] > 0.0
+    assert out_pushed["average_concentrations"]["oxygen"] > out_control["average_concentrations"]["oxygen"]
+
+
+def test_biofilm_process_boundary_concentrations_unknown_solute_raises():
     core = pb.allocate_core()
     proc = BiofilmProcess({"spec": BIOFILM_SPEC, "dt_per_update": 0.05}, core=core)
-    proc.update({"boundary_concentrations": {}}, 0.05)
-    # push oxygen boundary up; the average oxygen delta should reflect the change over subsequent steps
-    out1 = proc.update({"boundary_concentrations": {"oxygen": 20.0}}, 0.05)
-    assert "average_concentrations" in out1  # does not raise; input accepted and applied
+    with pytest.raises(ValueError):
+        proc.update({"boundary_concentrations": {"nonesuch": 1.0}}, 0.05)
 
 
 def test_chemostat_process_decays_solute1():
