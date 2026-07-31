@@ -1,8 +1,8 @@
 name: chemostat
 description: |
-  Well-mixed chemostat (Rust reimplementation of iDynoMiCS-2 ChemostatSolver);
+  Well-mixed chemostat (ODE reactor; reference model: Cockx et al. 2024);
   matches protocols/chemostat.xml: solute1 decays at 0.1/day into solute2.
-tags: [chemostat, idynomics2, reproduction, rust]
+tags: [chemostat, reference-model, reproduction, rust]
 requires:
   processes: [ChemostatProcess]
 state:

@@ -4,7 +4,7 @@ title: "viva-biofilm capabilities: spatial structure, performance, and composabi
 created: '2026-07-31'
 status: active
 question: |
-  Beyond well-mixed equivalence to iDynoMiCS-2 (the viva-biofilm-equivalence
+  Beyond well-mixed equivalence to the reference model (the viva-biofilm-equivalence
   investigation), what does the viva-biofilm Rust + process-bigraph engine
   make possible that the Java tool does not: fast, deterministic spatial
   biofilm simulation with beautiful interactive visuals, measured performance

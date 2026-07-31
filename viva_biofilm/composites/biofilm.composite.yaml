@@ -1,9 +1,9 @@
 name: biofilm
 description: |
-  2D single-species biofilm (Rust reimplementation of iDynoMiCS-2 simple.xml):
+  2D single-species biofilm (reference model: Cockx et al. 2024):
   coccoid bacterium on solute+oxygen, reaction-diffusion PDE + agent relaxation
   + division + detachment.
-tags: [biofilm, idynomics2, reproduction, rust]
+tags: [biofilm, reference-model, reproduction, rust]
 requires:
   processes: [BiofilmProcess]
 state:

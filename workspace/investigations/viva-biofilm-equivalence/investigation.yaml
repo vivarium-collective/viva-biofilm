@@ -1,10 +1,10 @@
 schema_version: 2
 name: viva-biofilm-equivalence
-title: "viva-biofilm: equivalence to iDynoMiCS-2 and viva-native capabilities"
+title: "viva-biofilm: equivalence to a published biofilm model and viva-native capabilities"
 created: '2026-07-31'
 status: active
 question: |
-  Can a clean-room Rust reimplementation of iDynoMiCS-2's core biofilm loop,
+  Can a clean-room Rust reimplementation of a published individual-based biofilm model (Cockx et al. 2024),
   wrapped as viva processes, reproduce the real engine's aggregate observables
   while unlocking composability, performance, reproducibility and rich visuals?
 executive:
