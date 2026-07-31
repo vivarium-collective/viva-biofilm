@@ -77,3 +77,22 @@ def test_biofilm_composite_multistep_population_bounded():
     # (which would produce ~60). Upper bound < 45 catches the delta-accumulation
     # regression while remaining well above the correct ~30.
     assert 30 <= population < 45, f"population {population} outside guard {30} <= x < 45"
+
+
+def test_biofilm_controlled_composite_builds_and_propagates_boundary():
+    """The controller and biofilm share a boundary_concentrations store: the
+    controller's schedule starts at oxygen=8.74 (t=0), so after a couple of
+    intervals the shared store must hold that value -- proving the wiring
+    (controller.outputs -> [stores, boundary_concentrations] -> biofilm.inputs)
+    actually connects rather than each process reading/writing its own copy.
+    """
+    core = build_core()
+    doc = yaml.safe_load((COMPOSITES / "biofilm_controlled.composite.yaml").read_text())
+    state = doc["state"]
+    composite = pb.Composite({"state": state}, core=core)
+
+    for _ in range(2):
+        composite.run(0.05)
+
+    boundary = composite.state["stores"]["boundary_concentrations"]
+    assert boundary["oxygen"] == pytest.approx(8.74)

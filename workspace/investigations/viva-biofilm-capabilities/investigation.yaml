@@ -28,11 +28,11 @@ scientific_argument:
   evidence_for:
   - "spatial-biofilm-growth: 40 -> 640 agents, 12.1 um thickness, substratum/boundary substrate ratio 0.49 (a clear substrate-limitation gradient), from one fixed, deterministic run (this study)."
   - "runtime-and-scaling: ~303,000 agent-steps/sec peak throughput; grid, population, and duration scaling curves all produced with no configuration exceeding the 30s slow threshold (this study)."
+  - "composability: a BoundaryControllerProcess drove the oxygen boundary on schedule (0.5 g/m^3 during t=1d-3d, restored to 8.74 after, matching reference exactly) and the biofilm's growth visibly responded -- 60 vs. 120 final agents, biomass ratio 0.574 vs. an identically-seeded un-perturbed control (this study)."
   caveats:
   - "IbM is stochastic; results are single-seed demonstrations of qualitative behavior, not statistical ensembles."
   - "PDE/relaxation/detachment are simplified vs iDynoMiCS's exact algorithms (see viva-biofilm-equivalence for the well-mixed quantitative equivalence claim)."
   - "Duration scaling is near- but not exactly linear (R^2=0.907): population growth via division during longer runs compounds per-step cost."
-  - "Composability study is a planned member not yet built (see investigation members)."
 biological_story: |
   A biofilm begins as a handful of cells attached to a surface. As they grow
   and divide, they consume the solutes diffusing in from the bulk liquid
@@ -44,6 +44,8 @@ biological_story: |
 members:
 - spatial-biofilm-growth
 - runtime-and-scaling
+- composability
 acceptance_criteria:
 - {study: spatial-biofilm-growth, behavior: developed-biofilm-structure}
 - {study: runtime-and-scaling, behavior: throughput-and-scaling-measured}
+- {study: composability, behavior: controller-drives-response}

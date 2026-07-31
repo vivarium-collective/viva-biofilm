@@ -37,3 +37,8 @@ def test_build_core_is_idempotent():
     core2 = build_core()
     assert "BiofilmProcess" in core1.link_registry
     assert "BiofilmProcess" in core2.link_registry
+
+
+def test_controller_registered():
+    core = build_core()
+    assert "BoundaryControllerProcess" in core.link_registry
