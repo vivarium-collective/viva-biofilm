@@ -73,5 +73,7 @@ def test_biofilm_composite_multistep_population_bounded():
     population = composite.state["stores"]["population"]
     # Two short (0.05 day) intervals won't grow the 30-agent seed population
     # much; the key regression check is that it's a small, bounded absolute
-    # near 30 -- not a runaway sum of double-counted absolute readbacks.
-    assert 30 <= population <= 60
+    # near 30 -- not a runaway sum of double-counted absolute readbacks
+    # (which would produce ~60). Upper bound < 45 catches the delta-accumulation
+    # regression while remaining well above the correct ~30.
+    assert 30 <= population < 45, f"population {population} outside guard {30} <= x < 45"
