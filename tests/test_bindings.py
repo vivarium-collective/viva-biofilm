@@ -41,3 +41,17 @@ def test_chemostat_binding_matches_analytic():
         c.step(0.01)
     import math
     assert abs(c.conc(0) - 2.0 * math.exp(-0.1 * 60.0)) < 1e-3
+
+def test_multi_strategy_bindings():
+    from viva_biofilm import biofilm_core
+    w = biofilm_core.World()
+    w.set_domain(50, 50, 2.0, 40.0)
+    o = w.add_solute("oxygen", 1.0, 2000.0, 1500.0, 1.0)
+    rs = w.add_species(0.15, 0.2); ys = w.add_species(0.15, 0.2)
+    w.add_reaction_for(rs, 3.0, [(o, 0.3)], [(o, -2.0)])
+    w.add_reaction_for(ys, 1.5, [(o, 0.3)], [(o, -1.0)])
+    w.spawn_distributed(rs, 8, 1.0, 0); w.spawn_distributed(ys, 8, 1.0, 1)
+    w.finalize(42)
+    assert w.population_of(0) == 8 and w.population_of(1) == 8
+    for _ in range(20): w.step(0.05)
+    assert w.population_of(0) >= 8 and w.population_of(1) >= 8
