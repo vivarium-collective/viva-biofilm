@@ -74,6 +74,99 @@ def _snapshot(w) -> dict:
     }
 
 
+# RS-vs-YS competition (Fig. 5 reproduction) — S1 Text Table K / Kreft 2004,
+# converted to engine units (length um, time DAYS, conc g/m^3 == mg/L, mass
+# pg). Rate Strategist: higher mu_max, lower yield. Yield Strategist: lower
+# mu_max, higher (more efficient) yield. Consistency check baked into the
+# numbers: RS mu_max is exactly 2x YS mu_max; RS yield coeff is exactly half
+# YS's; both share the same specific affinity mu_max/Kox = 0.274; RS
+# consumes 2x the oxygen per unit biomass that YS does.
+RATE_STRATEGIST = {
+    "name": "RS",
+    "density": 0.1363,
+    "division_mass": 0.08,
+    "mu_max": 3.9398,
+    "monod": [["oxygen", 0.6]],
+    "yields": [["oxygen", -43.478]],
+}
+YIELD_STRATEGIST = {
+    "name": "YS",
+    "density": 0.1363,
+    "division_mass": 0.08,
+    "mu_max": 1.9699,
+    "monod": [["oxygen", 0.3]],
+    "yields": [["oxygen", -21.739]],
+}
+
+
+def competition_spec(
+    n_each: int,
+    rs: dict | None = None,
+    ys: dict | None = None,
+    seed: int = 42,
+    nx: int = 128,
+    ny: int = 64,
+    dx: float = 1.5625,
+) -> dict:
+    """Build a two-strategy (RS vs YS) competition spec over oxygen.
+
+    Domain defaults to a ~200um-wide 2D slab (nx=128, ny=64, dx=1.5625um,
+    layer_thickness=40um). Oxygen is the sole solute (init/bulk 1.0,
+    diffusivity 2000 um^2/s in both liquid and biofilm phases — the paper
+    gives a single value). `n_each` agents of each strategy are seeded via
+    the distributed spawner; RS is strategy/species index 0, YS is index 1.
+
+    `rs`/`ys` optionally override the default Table-K RS/YS parameter
+    dicts (each shaped like `RATE_STRATEGIST`/`YIELD_STRATEGIST`).
+    """
+    rs_params = {**RATE_STRATEGIST, **(rs or {})}
+    ys_params = {**YIELD_STRATEGIST, **(ys or {})}
+
+    return {
+        "domain": {"nx": nx, "ny": ny, "dx": dx, "layer_thickness": 40.0},
+        "solutes": [
+            {"name": "oxygen", "init": 1.0, "diff_liquid": 2000.0, "diff_biofilm": 2000.0, "bulk": 1.0},
+        ],
+        "strategies": [
+            {**rs_params, "spawn_n": n_each, "seed_offset": 0},
+            {**ys_params, "spawn_n": n_each, "seed_offset": 1},
+        ],
+        "seed": seed,
+    }
+
+
+def run_competition(
+    spec: dict, n_steps: int, dt: float = 1 / 24, snapshot_every: int = 1
+) -> list[dict]:
+    """Run a multi-strategy competition world, collecting snapshots.
+
+    Like `run_biofilm`, but each snapshot also carries `pop_by_strategy`
+    and `biomass_by_strategy` (lists indexed by species/strategy index, RS
+    first at 0, YS at 1) alongside the usual per-agent `species` array.
+    Default dt = 1/24 day (paper's Delta-t = 1 hour).
+    """
+    step_dt = spec.get("dt", dt)
+    w = load_world(spec)
+    n_strategies = len(spec.get("strategies", []))
+
+    def snap() -> dict:
+        s = _snapshot(w)
+        s["pop_by_strategy"] = [w.population_of(i) for i in range(n_strategies)]
+        s["biomass_by_strategy"] = [w.biomass_of(i) for i in range(n_strategies)]
+        return s
+
+    snapshots = [snap()]
+    for i in range(1, n_steps + 1):
+        w.step(step_dt)
+        if i % snapshot_every == 0:
+            snapshots.append(snap())
+
+    if n_steps % snapshot_every != 0:
+        snapshots.append(snap())
+
+    return snapshots
+
+
 def run_biofilm(spec: dict, n_steps: int, snapshot_every: int = 1, dt: float = 0.05) -> list[dict]:
     """Run the biofilm world for n_steps, collecting snapshots.
 
