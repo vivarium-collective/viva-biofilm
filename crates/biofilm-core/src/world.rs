@@ -164,6 +164,14 @@ impl World {
         });
     }
 
+    /// Set a solute's `bulk` (the top-boundary Dirichlet value used by
+    /// `step`'s steady-state solve). Lets an external process perturb the
+    /// environment at runtime, e.g. via `BiofilmProcess`'s
+    /// `boundary_concentrations` input.
+    pub fn set_bulk(&mut self, k: usize, value: f64) {
+        self.solutes[k].bulk = value;
+    }
+
     pub fn set_species(&mut self, density: f64, division_mass: f64) {
         self.density = density;
         self.division_mass = division_mass;

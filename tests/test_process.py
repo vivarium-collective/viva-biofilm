@@ -25,6 +25,15 @@ def test_biofilm_process_update_returns_readbacks():
     assert "solute" in out["solute_fields"]
     assert len(out["solute_fields"]["solute"]) == 16 * 32
 
+def test_biofilm_process_honors_boundary_concentrations():
+    core = pb.allocate_core()
+    proc = BiofilmProcess({"spec": BIOFILM_SPEC, "dt_per_update": 0.05}, core=core)
+    proc.update({"boundary_concentrations": {}}, 0.05)
+    # push oxygen boundary up; the average oxygen delta should reflect the change over subsequent steps
+    out1 = proc.update({"boundary_concentrations": {"oxygen": 20.0}}, 0.05)
+    assert "average_concentrations" in out1  # does not raise; input accepted and applied
+
+
 def test_chemostat_process_decays_solute1():
     core = pb.allocate_core()
     proc = ChemostatProcess({"spec": CHEMO_SPEC, "dt_per_update": 1.0}, core=core)

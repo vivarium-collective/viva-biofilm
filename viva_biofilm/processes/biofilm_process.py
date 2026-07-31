@@ -7,8 +7,10 @@ class BiofilmProcess(Process):
 
     Output ports average_concentrations/population/time are name/type-compatible
     with pbg-idynomics2's IDynoMiCS2Process so the two engines are swappable.
-    (boundary_concentrations input is accepted now; driving the Rust boundary
-    from it is the Phase C composability step.)
+    boundary_concentrations (map name->value) is applied each update: before
+    stepping, each entry sets that solute's top-boundary (bulk) concentration
+    via the Rust binding, so an external process can perturb the environment
+    at runtime.
     """
 
     config_schema = {
@@ -53,6 +55,8 @@ class BiofilmProcess(Process):
         }
 
     def update(self, state, interval):
+        for name, val in (state or {}).get("boundary_concentrations", {}).items():
+            self.world.set_bulk_by_name(name, float(val))
         self.world.step(self.dt)
 
         cur_means = self.world.solute_means()

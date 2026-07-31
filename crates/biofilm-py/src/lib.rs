@@ -55,6 +55,20 @@ impl World {
         self.inner.add_reaction(mu_max, monod_terms, yields);
     }
 
+    /// Set a solute's boundary (`bulk`) concentration by name, resolving
+    /// via the wrapper's `solute_index` name map. Lets an external process
+    /// (e.g. `BiofilmProcess`, driven by its `boundary_concentrations`
+    /// input) perturb the environment at runtime. Raises `ValueError` if
+    /// `name` is not a known solute.
+    fn set_bulk_by_name(&mut self, name: &str, value: f64) -> PyResult<()> {
+        let idx = self
+            .solute_index
+            .get(name)
+            .ok_or_else(|| PyValueError::new_err(format!("unknown solute: {name}")))?;
+        self.inner.set_bulk(*idx, value);
+        Ok(())
+    }
+
     fn set_species(&mut self, density: f64, division_mass: f64) {
         self.inner.set_species(density, division_mass);
         self.density = density;
