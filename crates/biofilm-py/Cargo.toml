@@ -1,0 +1,12 @@
+[package]
+name = "biofilm-py"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+name = "biofilm_core"
+crate-type = ["cdylib"]
+
+[dependencies]
+biofilm-core = { workspace = true }
+pyo3 = { version = "0.22", features = ["extension-module"] }

@@ -1,0 +1,32 @@
+schema_version: 2
+name: viva-biofilm-equivalence
+title: "viva-biofilm: equivalence to iDynoMiCS-2 and viva-native capabilities"
+created: '2026-07-31'
+status: active
+question: |
+  Can a clean-room Rust reimplementation of iDynoMiCS-2's core biofilm loop,
+  wrapped as viva processes, reproduce the real engine's aggregate observables
+  while unlocking composability, performance, reproducibility and rich visuals?
+executive:
+  what_is_this: |
+    An investigation that builds viva-biofilm (Rust + viva) and demonstrates,
+    study by study, equivalence to the real iDynoMiCS-2 (via the pbg-idynomics2
+    Java bridge) plus capabilities the Java tool lacks.
+  verdict_status: in-progress
+scientific_argument:
+  main_claim: |
+    viva-biofilm reproduces iDynoMiCS-2 core biofilm behavior at the
+    observable level and is composable/faster/reproducible with richer visuals.
+  evidence_for:
+  - "Chemostat matches the analytic solution to <1% (this study)."
+  caveats:
+  - "IbM is stochastic; spatial equivalence is ensemble-level, not bitwise."
+  - "PDE/relaxation/detachment are simplified vs iDynoMiCS's exact algorithms."
+biological_story: |
+  Biofilms are spatially structured microbial communities; their emergent
+  structure arises from the interplay of local growth, solute gradients, and
+  mechanical rearrangement — exactly the loop reproduced here.
+members:
+- chemostat-equivalence
+acceptance_criteria:
+- {study: chemostat-equivalence, behavior: matches-analytic-within-1pct}
