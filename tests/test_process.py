@@ -1,7 +1,7 @@
 import process_bigraph as pb
 from viva_biofilm.processes.biofilm_process import BiofilmProcess
 from viva_biofilm.processes.chemostat_process import ChemostatProcess
-from tests.test_schema import BIOFILM_SPEC
+from viva_biofilm.run import BIOFILM_SPEC
 
 CHEMO_SPEC = {
     "solutes": [{"name": "solute1", "init": 2.0}, {"name": "solute2", "init": 2.0}],
