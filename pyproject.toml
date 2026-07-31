@@ -9,7 +9,7 @@ requires-python = ">=3.12"
 dependencies = ["process-bigraph", "bigraph-schema"]
 
 [project.optional-dependencies]
-dev = ["pytest", "maturin>=1.5,<2", "numpy", "plotly", "pyyaml"]
+dev = ["pytest", "maturin>=1.5,<2", "numpy", "plotly", "pyyaml", "vivarium-workbench"]
 
 [tool.maturin]
 manifest-path = "crates/biofilm-py/Cargo.toml"
