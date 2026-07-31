@@ -1,0 +1,35 @@
+{
+  "schema": "report_card_verdict/v1",
+  "groups": {
+    "performance": {
+      "axes": [
+        {
+          "name": "throughput-measured",
+          "verdict": "within_tol",
+          "value": 303438.98844775604,
+          "reference": 0.0,
+          "units": "agent-steps/sec"
+        },
+        {
+          "name": "grid-scaling-produced",
+          "verdict": "within_tol",
+          "value": 5,
+          "reference": 5
+        },
+        {
+          "name": "population-scaling-produced",
+          "verdict": "within_tol",
+          "value": 5,
+          "reference": 5
+        },
+        {
+          "name": "duration-near-linear",
+          "verdict": "within_tol",
+          "value": 0.9065197184701226,
+          "reference": 0.9,
+          "note": "total wall-time vs steps R^2 of a linear fit; population grows during the run (division), which compounds per-step cost and can pull this below strict linearity"
+        }
+      ]
+    }
+  }
+}

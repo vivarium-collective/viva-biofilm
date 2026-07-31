@@ -27,10 +27,12 @@ scientific_argument:
     with process-bigraph the same way the well-mixed chemostat path does.
   evidence_for:
   - "spatial-biofilm-growth: 40 -> 640 agents, 12.1 um thickness, substratum/boundary substrate ratio 0.49 (a clear substrate-limitation gradient), from one fixed, deterministic run (this study)."
+  - "runtime-and-scaling: ~303,000 agent-steps/sec peak throughput; grid, population, and duration scaling curves all produced with no configuration exceeding the 30s slow threshold (this study)."
   caveats:
   - "IbM is stochastic; results are single-seed demonstrations of qualitative behavior, not statistical ensembles."
   - "PDE/relaxation/detachment are simplified vs iDynoMiCS's exact algorithms (see viva-biofilm-equivalence for the well-mixed quantitative equivalence claim)."
-  - "Runtime-and-scaling and composability studies are planned members not yet built (see investigation members)."
+  - "Duration scaling is near- but not exactly linear (R^2=0.907): population growth via division during longer runs compounds per-step cost."
+  - "Composability study is a planned member not yet built (see investigation members)."
 biological_story: |
   A biofilm begins as a handful of cells attached to a surface. As they grow
   and divide, they consume the solutes diffusing in from the bulk liquid
@@ -41,5 +43,7 @@ biological_story: |
   investigation demonstrates and visualizes.
 members:
 - spatial-biofilm-growth
+- runtime-and-scaling
 acceptance_criteria:
 - {study: spatial-biofilm-growth, behavior: developed-biofilm-structure}
+- {study: runtime-and-scaling, behavior: throughput-and-scaling-measured}
