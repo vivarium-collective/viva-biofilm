@@ -48,14 +48,40 @@ const SECONDS_PER_DAY: f64 = 86_400.0;
 /// pg/µm³ -> g/m³ (1 µm³ = 1e-18 m³, 1 pg = 1e-12 g -> 1 pg/µm³ = 1e6 g/m³).
 const PG_PER_UM3_TO_G_PER_M3: f64 = 1.0e6;
 
-/// A recorded request to spawn `n` agents randomly within a substratum-adjacent
-/// band of height `band_height`, using an independent RNG stream derived from
-/// `seed_offset` so multiple spawn groups don't collide. Actual placement is
-/// deferred to `finalize(seed)` so that identical seeds reproduce identical runs.
+/// Newborn agents placed by `spawn_distributed` start at
+/// `min(division_mass / 2, DISTRIBUTED_SEED_MASS_CAP)`. `spawn_agents` (the
+/// old single-species path) keeps its original, uncapped `division_mass / 2`
+/// formula for exact backward compatibility. The cap exists because
+/// `spawn_distributed` is also used with deliberately huge `division_mass`
+/// values (e.g. in growth-only tests, to suppress division) where
+/// `division_mass / 2` would seed a physically absurd starting mass and
+/// swamp the reaction-diffusion sink; 0.1 pg matches the typical starting
+/// mass used across the existing single-species tests (`division_mass=0.2`).
+const DISTRIBUTED_SEED_MASS_CAP: f64 = 0.1;
+
+/// A recorded request to spawn `n` agents of a given `species` within a
+/// substratum-adjacent band of height `band_height`, using an independent RNG
+/// stream derived from `seed_offset` so multiple spawn groups don't collide.
+/// Actual placement is deferred to `finalize(seed)` so that identical seeds
+/// reproduce identical runs. `distributed` selects alternating/equidistant x
+/// placement (`spawn_distributed`) vs. uniform-random x placement
+/// (`spawn_agents`, the original behavior).
 struct SpawnSpec {
+    species: usize,
     n: usize,
     band_height: f64,
     seed_offset: u64,
+    distributed: bool,
+}
+
+/// A strategy/species' own growth kinetics + morphology: its Monod
+/// reaction(s) (consumption/growth rates), its packing density (mass ->
+/// area-equivalent radius), and its division threshold mass. `World::species`
+/// holds one of these per strategy; each `Agent::species` indexes into it.
+pub struct Species {
+    pub density: f64,
+    pub division_mass: f64,
+    pub reactions: Vec<Reaction>,
 }
 
 pub struct World {
@@ -66,10 +92,13 @@ pub struct World {
     solute_names: Vec<String>,
     diff_biofilm: Vec<f64>, // stored per Phase-A API contract; unused until Phase B
 
-    reactions: Vec<Reaction>,
-
-    density: f64,
-    division_mass: f64,
+    /// Per-species/strategy kinetics + morphology. `species[0]` is
+    /// pre-populated in `new()` with the pre-Task-1 global defaults
+    /// (density=0.15, division_mass=INFINITY, no reactions) so the old
+    /// single-species API (`set_species`/`add_reaction`/`spawn_agents`, which
+    /// always tags agents with `species: 0`) keeps working unchanged: it
+    /// simply reads/writes `species[0]` instead of standalone globals.
+    species: Vec<Species>,
 
     agents: Vec<Agent>,
     pending_spawns: Vec<SpawnSpec>,
@@ -110,9 +139,11 @@ impl World {
             solutes: Vec::new(),
             solute_names: Vec::new(),
             diff_biofilm: Vec::new(),
-            reactions: Vec::new(),
-            density: 0.15,
-            division_mass: f64::INFINITY,
+            species: vec![Species {
+                density: 0.15,
+                division_mass: f64::INFINITY,
+                reactions: Vec::new(),
+            }],
             agents: Vec::new(),
             pending_spawns: Vec::new(),
             rng: ChaCha8Rng::seed_from_u64(0),
@@ -154,14 +185,53 @@ impl World {
         self.solutes.len() - 1
     }
 
+    /// Backward-compat shim: appends to `species[0]` (auto-created with the
+    /// original global defaults if somehow missing — `new()` always
+    /// pre-populates it, so this is a defensive no-op in practice).
     pub fn add_reaction(&mut self, mu_max: f64, monod_terms: Vec<(usize, f64)>, yields: Vec<(usize, f64)>) {
-        self.reactions.push(Reaction {
+        if self.species.is_empty() {
+            self.species.push(Species {
+                density: 0.15,
+                division_mass: f64::INFINITY,
+                reactions: Vec::new(),
+            });
+        }
+        self.species[0].reactions.push(Reaction {
             kinetics: Monod {
                 mu_max,
                 terms: monod_terms,
             },
             yield_per_solute: yields,
         });
+    }
+
+    /// Appends a reaction to an existing species (see `add_species`).
+    pub fn add_reaction_for(
+        &mut self,
+        species_idx: usize,
+        mu_max: f64,
+        monod_terms: Vec<(usize, f64)>,
+        yields: Vec<(usize, f64)>,
+    ) {
+        self.species[species_idx].reactions.push(Reaction {
+            kinetics: Monod {
+                mu_max,
+                terms: monod_terms,
+            },
+            yield_per_solute: yields,
+        });
+    }
+
+    /// Registers a new strategy/species (empty reactions; add its kinetics
+    /// via `add_reaction_for`). Returns the species index, to be passed to
+    /// `add_reaction_for` and `spawn_distributed`.
+    pub fn add_species(&mut self, density: f64, division_mass: f64) -> usize {
+        self.species.push(Species {
+            density,
+            division_mass,
+            reactions: Vec::new(),
+        });
+        self.species.len() - 1
     }
 
     /// Set a solute's `bulk` (the top-boundary Dirichlet value used by
@@ -172,9 +242,19 @@ impl World {
         self.solutes[k].bulk = value;
     }
 
+    /// Backward-compat shim: if `species` is empty, pushes a new one;
+    /// otherwise sets `species[0]`'s density/division_mass.
     pub fn set_species(&mut self, density: f64, division_mass: f64) {
-        self.density = density;
-        self.division_mass = division_mass;
+        if self.species.is_empty() {
+            self.species.push(Species {
+                density,
+                division_mass,
+                reactions: Vec::new(),
+            });
+        } else {
+            self.species[0].density = density;
+            self.species[0].division_mass = division_mass;
+        }
     }
 
     /// Configure the red-black SOR solver knobs used by `step()`'s
@@ -205,14 +285,37 @@ impl World {
         self.pde_omega = omega;
     }
 
-    /// Record intent to spawn `n` agents randomly placed within a band of
-    /// height `band_height` above the substratum. Placement is deferred to
-    /// `finalize(seed)` for reproducibility.
+    /// Record intent to spawn `n` species-0 agents randomly placed within a
+    /// band of height `band_height` above the substratum. Placement is
+    /// deferred to `finalize(seed)` for reproducibility. Unchanged from
+    /// pre-Task-1 behavior (species is always 0; x is uniform-random, not
+    /// distributed/equidistant — see `spawn_distributed` for that).
     pub fn spawn_agents(&mut self, n: usize, band_height: f64, seed_offset: u64) {
         self.pending_spawns.push(SpawnSpec {
+            species: 0,
             n,
             band_height,
             seed_offset,
+            distributed: false,
+        });
+    }
+
+    /// Record intent to spawn `n` agents of `species_idx`, placed at
+    /// alternating, roughly equidistant x-positions along the substratum
+    /// band (rather than `spawn_agents`' uniform-random x) — the "distributed
+    /// alternating" spawner used for multi-strategy competition seeding.
+    /// `y` is still randomized within `band_height`. Placement is deferred to
+    /// `finalize(seed)` for reproducibility; `seed_offset`'s parity also
+    /// phase-shifts the x-lattice half a spacing so that two calls with
+    /// even/odd `seed_offset` interleave (e.g. RS at offset 0, YS at offset 1
+    /// land in an alternating checkerboard along x).
+    pub fn spawn_distributed(&mut self, species_idx: usize, n: usize, band_height: f64, seed_offset: u64) {
+        self.pending_spawns.push(SpawnSpec {
+            species: species_idx,
+            n,
+            band_height,
+            seed_offset,
+            distributed: true,
         });
     }
 
@@ -229,15 +332,36 @@ impl World {
         let domain_x = self.grid.nx as f64 * self.grid.dx;
         for spec in self.pending_spawns.drain(..) {
             let mut local_rng = ChaCha8Rng::seed_from_u64(seed.wrapping_add(spec.seed_offset));
-            for _ in 0..spec.n {
-                let x = local_rng.gen_range(0.0..domain_x);
-                let y = local_rng.gen_range(0.0..spec.band_height);
-                self.agents.push(Agent {
-                    x,
-                    y,
-                    mass: self.division_mass / 2.0,
-                    species: 0,
-                });
+            let division_mass = self.species[spec.species].division_mass;
+            if spec.distributed {
+                // Alternating/equidistant x: n equally-spaced slots across
+                // [0, domain_x), phase-shifted by half a slot when
+                // seed_offset is odd so a second distributed group
+                // interleaves with the first instead of overlapping it.
+                let spacing = domain_x / spec.n.max(1) as f64;
+                let phase = if spec.seed_offset % 2 == 0 { 0.5 } else { 1.0 };
+                let seed_mass = (division_mass / 2.0).min(DISTRIBUTED_SEED_MASS_CAP);
+                for i in 0..spec.n {
+                    let x = ((i as f64 + phase) * spacing).rem_euclid(domain_x);
+                    let y = local_rng.gen_range(0.0..spec.band_height);
+                    self.agents.push(Agent {
+                        x,
+                        y,
+                        mass: seed_mass,
+                        species: spec.species as u16,
+                    });
+                }
+            } else {
+                for _ in 0..spec.n {
+                    let x = local_rng.gen_range(0.0..domain_x);
+                    let y = local_rng.gen_range(0.0..spec.band_height);
+                    self.agents.push(Agent {
+                        x,
+                        y,
+                        mass: division_mass / 2.0,
+                        species: spec.species as u16,
+                    });
+                }
             }
         }
     }
@@ -246,13 +370,17 @@ impl World {
 
     pub fn step(&mut self, dt: f64) {
         let ncell = self.grid.nx * self.grid.ny;
-        // 1. accumulate per-cell sink for each solute (g/m³/day)
+        // 1. accumulate per-cell sink for each solute (g/m³/day); each agent
+        //    consumes/produces according to its OWN species' reactions, but
+        //    every agent's contribution lands in the same shared sink array
+        //    (one substrate field, however many strategies are competing for
+        //    it).
         let mut sinks: Vec<Vec<f64>> = self.solutes.iter().map(|_| vec![0.0; ncell]).collect();
         let cell_vol = self.grid.dx * self.grid.dx; // µm² (2D, unit depth)
         for a in &self.agents {
             let (i, j) = self.cell_of(a);
             let concs: Vec<f64> = self.solutes.iter().map(|f| f.conc[self.grid.idx(i, j)]).collect();
-            for rxn in &self.reactions {
+            for rxn in &self.species[a.species as usize].reactions {
                 let bio_rate = rxn.biomass_rate(a.mass, &concs); // pg/day
                 for &(k, coeff) in &rxn.yield_per_solute {
                     // sink [g/m³/day] = -coeff * bio_rate[pg/day] / cell_vol[µm²]
@@ -268,7 +396,7 @@ impl World {
                 }
             }
         }
-        // 2. solve each solute field to steady state
+        // 2. solve each solute field to steady state (unchanged)
         for (k, f) in self.solutes.iter_mut().enumerate() {
             crate::grid::solve_steady_state(
                 f,
@@ -280,21 +408,53 @@ impl World {
                 self.pde_max_iter,
             );
         }
-        // 3. grow agents at their local concentrations
+        // 3. grow agents at their local concentrations, by their own species'
+        //    reactions (this is where Rate- vs Yield-Strategist divergence
+        //    comes from: same local concentration, different mu_max/yield).
         let rates: Vec<f64> = self
             .agents
             .iter()
             .map(|a| {
                 let (i, j) = self.cell_of(a);
                 let concs: Vec<f64> = self.solutes.iter().map(|f| f.conc[self.grid.idx(i, j)]).collect();
-                self.reactions.iter().map(|r| r.biomass_rate(a.mass, &concs)).sum()
+                self.species[a.species as usize]
+                    .reactions
+                    .iter()
+                    .map(|r| r.biomass_rate(a.mass, &concs))
+                    .sum()
             })
             .collect();
         crate::agent::grow(&mut self.agents, &rates, dt);
-        // 4. division, relaxation, detachment
-        crate::agent::divide_with_density(&mut self.agents, self.division_mass, self.density, &mut self.rng);
+        // 4. division: per-species division_mass + placement density. Grouped
+        //    by species (each species' agents run through the unmodified
+        //    `divide_with_density` as a homogeneous sub-population) rather
+        //    than changed in-place, so the single-species case (exactly one
+        //    species, i.e. all agents in one group, same relative order) is
+        //    byte-for-byte the same call as before Task 1.
+        let mut divided: Vec<Agent> = Vec::with_capacity(self.agents.len());
+        for (s_idx, sp) in self.species.iter().enumerate() {
+            let mut group: Vec<Agent> = self
+                .agents
+                .iter()
+                .filter(|a| a.species as usize == s_idx)
+                .cloned()
+                .collect();
+            if !group.is_empty() {
+                crate::agent::divide_with_density(&mut group, sp.division_mass, sp.density, &mut self.rng);
+            }
+            divided.append(&mut group);
+        }
+        self.agents = divided;
+        // 5. relaxation (shoving) + detachment: unchanged algorithms, one
+        //    representative packing density. Heterogeneous per-species
+        //    shoving mechanics is out of scope for this phase — the Fig-5
+        //    RS/YS strategies share the same packing density, so this is not
+        //    a limitation for that study; a fully per-agent-density shove
+        //    would need `relaxation::relax`'s signature to change, which
+        //    Task 1 deliberately leaves untouched.
         let domain_x = self.grid.nx as f64 * self.grid.dx;
-        crate::relaxation::relax(&mut self.agents, self.density, domain_x, 30, 0.5);
+        let shove_density = self.species.first().map(|s| s.density).unwrap_or(0.15);
+        crate::relaxation::relax(&mut self.agents, shove_density, domain_x, 30, 0.5);
         let max_h = self.grid.ny as f64 * self.grid.dx;
         crate::detachment::detach_above_height(&mut self.agents, max_h);
         self.time += dt;
