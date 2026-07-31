@@ -1,0 +1,45 @@
+schema_version: 2
+name: viva-biofilm-capabilities
+title: "viva-biofilm capabilities: spatial structure, performance, and composability"
+created: '2026-07-31'
+status: active
+question: |
+  Beyond well-mixed equivalence to iDynoMiCS-2 (the viva-biofilm-equivalence
+  investigation), what does the viva-biofilm Rust + process-bigraph engine
+  make possible that the Java tool does not: fast, deterministic spatial
+  biofilm simulation with beautiful interactive visuals, measured performance
+  scaling, and composability with external control processes?
+executive:
+  what_is_this: |
+    A demonstration investigation for the viva-biofilm engine's viva-native
+    capabilities: a spatially developed biofilm (colony structure, solute
+    gradients, growth curves) rendered as interactive Plotly figures, its
+    runtime/scaling characteristics, and its composability with a boundary
+    controller process — all built on the Phase-A Rust core (BiofilmProcess)
+    now ~23x faster and deterministic after unit reconciliation and
+    calibration.
+  verdict_status: in-progress
+scientific_argument:
+  main_claim: |
+    viva-biofilm grows a spatially structured, substrate-limited biofilm from
+    a small inoculum using fixed (non-tuned) parameters, in seconds, with
+    reproducible (seeded) determinism — and this spatial capability composes
+    with process-bigraph the same way the well-mixed chemostat path does.
+  evidence_for:
+  - "spatial-biofilm-growth: 40 -> 640 agents, 12.1 um thickness, substratum/boundary substrate ratio 0.49 (a clear substrate-limitation gradient), from one fixed, deterministic run (this study)."
+  caveats:
+  - "IbM is stochastic; results are single-seed demonstrations of qualitative behavior, not statistical ensembles."
+  - "PDE/relaxation/detachment are simplified vs iDynoMiCS's exact algorithms (see viva-biofilm-equivalence for the well-mixed quantitative equivalence claim)."
+  - "Runtime-and-scaling and composability studies are planned members not yet built (see investigation members)."
+biological_story: |
+  A biofilm begins as a handful of cells attached to a surface. As they grow
+  and divide, they consume the solutes diffusing in from the bulk liquid
+  faster than diffusion can replenish them near the substratum, so a
+  concentration gradient forms: richer at the boundary, poorer at the base.
+  That gradient in turn shapes where growth is fastest, producing the
+  characteristic spatially structured, substrate-limited colony this
+  investigation demonstrates and visualizes.
+members:
+- spatial-biofilm-growth
+acceptance_criteria:
+- {study: spatial-biofilm-growth, behavior: developed-biofilm-structure}

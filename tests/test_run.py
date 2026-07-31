@@ -18,3 +18,12 @@ def test_run_biofilm_is_deterministic():
     b = run_biofilm(spec, n_steps=8, snapshot_every=8, dt=0.05)[-1]
     assert a["population"] == b["population"]
     assert a["agents"]["x"] == b["agents"]["x"]
+
+def test_run_biofilm_always_snapshots_the_final_step():
+    # n_steps=100 is not a multiple of snapshot_every=15 (100 % 15 == 10), so
+    # the last periodic snapshot would land at step 90 unless run_biofilm
+    # appends a final snapshot for step 100.
+    spec = default_spec(nx=16, ny=32, n_agents=30, seed=7)
+    dt = 0.05
+    snaps = run_biofilm(spec, n_steps=100, snapshot_every=15, dt=dt)
+    assert abs(snaps[-1]["time"] - 100 * dt) < 1e-9

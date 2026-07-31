@@ -1,0 +1,29 @@
+{
+  "schema": "report_card_verdict/v1",
+  "groups": {
+    "spatial-structure": {
+      "axes": [
+        {
+          "name": "population-grew",
+          "verdict": "within_tol",
+          "value": 640,
+          "reference": 40
+        },
+        {
+          "name": "thickness-positive",
+          "verdict": "within_tol",
+          "value": 12.137436564496111,
+          "reference": 0.0
+        },
+        {
+          "name": "substrate-gradient-present",
+          "verdict": "within_tol",
+          "value": 0.4899117694059533,
+          "reference": 0.7,
+          "substratum_mean": 0.4378036711742816,
+          "boundary_mean": 0.8936377905457225
+        }
+      ]
+    }
+  }
+}

@@ -88,4 +88,7 @@ def run_biofilm(spec: dict, n_steps: int, snapshot_every: int = 1, dt: float = 0
         if i % snapshot_every == 0:
             snapshots.append(_snapshot(w))
 
+    if n_steps % snapshot_every != 0:
+        snapshots.append(_snapshot(w))
+
     return snapshots
