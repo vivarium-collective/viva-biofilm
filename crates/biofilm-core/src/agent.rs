@@ -26,6 +26,15 @@ pub fn grow(agents: &mut [Agent], rate_per_agent: &[f64], dt: f64) {
 }
 
 pub fn divide(agents: &mut Vec<Agent>, division_mass: f64, rng: &mut impl Rng) {
+    divide_with_density(agents, division_mass, 0.15, rng);
+}
+
+pub fn divide_with_density(
+    agents: &mut Vec<Agent>,
+    division_mass: f64,
+    density: f64,
+    rng: &mut impl Rng,
+) {
     let n = agents.len();
     for i in 0..n {
         if agents[i].mass >= division_mass {
@@ -33,7 +42,7 @@ pub fn divide(agents: &mut Vec<Agent>, division_mass: f64, rng: &mut impl Rng) {
             agents[i].mass = half;
             let angle = rng.gen_range(0.0..(2.0 * PI));
             // place daughter one (post-split) radius away
-            let r = (half / (PI * 0.15)).sqrt(); // density placeholder; overwritten in world
+            let r = (half / (PI * density)).sqrt();
             let daughter = Agent {
                 x: agents[i].x + r * angle.cos(),
                 y: (agents[i].y + r * angle.sin()).max(0.0),
