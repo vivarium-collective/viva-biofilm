@@ -78,6 +78,22 @@ pub struct World {
     seed: u64,
 
     time: f64,
+
+    // ---- PDE solver knobs (configurable via `set_pde_params`) -----------
+    //
+    // Defaults tuned for the simulation/visualization regime: with the
+    // persistent warm-started field (`SoluteField.conc` carries over
+    // between `step()` calls), the steady-state solve only needs to relax
+    // away from the previous tick's near-converged field, not from a cold
+    // start every time. A loose tolerance (1e-4 vs. the old 1e-7) and a
+    // small max_iter budget (2000 vs. the old 20000) preserve the steady-
+    // state gradient SHAPE (only trailing digits differ) while cutting
+    // iterations-per-tick sharply. omega=1.8 is close to the SOR-optimal
+    // 2/(1+sin(pi/N)) for grids in the N~32-256 range and must stay < 2.0
+    // to avoid divergence.
+    pde_tol: f64,
+    pde_max_iter: usize,
+    pde_omega: f64,
 }
 
 impl Default for World {
@@ -102,6 +118,9 @@ impl World {
             rng: ChaCha8Rng::seed_from_u64(0),
             seed: 0,
             time: 0.0,
+            pde_tol: 1e-4,
+            pde_max_iter: 2_000,
+            pde_omega: 1.8,
         }
     }
 
@@ -148,6 +167,19 @@ impl World {
     pub fn set_species(&mut self, density: f64, division_mass: f64) {
         self.density = density;
         self.division_mass = division_mass;
+    }
+
+    /// Configure the red-black SOR solver knobs used by `step()`'s
+    /// reaction-diffusion solve: `tol` (residual convergence threshold),
+    /// `max_iter` (iteration budget per solute per tick), and `omega`
+    /// (over-relaxation factor; must stay < 2.0 to avoid SOR divergence).
+    /// Safe to call any time before or after `finalize`; defaults (set in
+    /// `World::new`) are the fast values tol=1e-4, max_iter=2000,
+    /// omega=1.8.
+    pub fn set_pde_params(&mut self, tol: f64, max_iter: usize, omega: f64) {
+        self.pde_tol = tol;
+        self.pde_max_iter = max_iter;
+        self.pde_omega = omega;
     }
 
     /// Record intent to spawn `n` agents randomly placed within a band of
@@ -215,7 +247,15 @@ impl World {
         }
         // 2. solve each solute field to steady state
         for (k, f) in self.solutes.iter_mut().enumerate() {
-            crate::grid::solve_steady_state(f, &self.grid, &sinks[k], f.bulk, 1.4, 1e-7, 20_000);
+            crate::grid::solve_steady_state(
+                f,
+                &self.grid,
+                &sinks[k],
+                f.bulk,
+                self.pde_omega,
+                self.pde_tol,
+                self.pde_max_iter,
+            );
         }
         // 3. grow agents at their local concentrations
         let rates: Vec<f64> = self

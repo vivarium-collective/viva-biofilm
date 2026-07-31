@@ -60,6 +60,12 @@ impl World {
         self.density = density;
     }
 
+    /// Configure the PDE (SOR) solver knobs: `tol`, `max_iter`, `omega`.
+    /// Defaults to the fast values (1e-4, 2000, 1.8) if never called.
+    fn set_pde_params(&mut self, tol: f64, max_iter: usize, omega: f64) {
+        self.inner.set_pde_params(tol, max_iter, omega);
+    }
+
     fn spawn_agents(&mut self, n: usize, band_height: f64, seed_offset: u64) {
         self.inner.spawn_agents(n, band_height, seed_offset);
     }
