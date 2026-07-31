@@ -51,6 +51,17 @@ CHART_FILES = [
 SLOW_THRESHOLD_S = 30.0
 
 
+def _save(fig, stem: str) -> None:
+    """Write both the interactive HTML and a static PNG sibling into CHARTS.
+
+    The static PNG is what the dashboard's Charts panel actually renders --
+    discover_static_study_charts only picks up *.svg/*.png/*.gif under
+    charts/, not embed_visualizations (interactive HTML).
+    """
+    viz.save_html(fig, str(CHARTS / f"{stem}.html"))
+    viz.save_png(fig, str(CHARTS / f"{stem}.png"))
+
+
 def time_run(nx: int, ny: int, n_agents: int, n_steps: int, seed: int = 1) -> dict:
     """Build a world and time n_steps of w.step(DT). Returns measurement dict.
 
@@ -321,10 +332,10 @@ def main() -> None:
     print("Duration sweep (fixed grid 48x64, 40 agents):")
     dur_r = run_duration_sweep()
 
-    viz.save_html(grid_scaling_figure(grid_r), str(CHARTS / "scaling_grid.html"))
-    viz.save_html(population_scaling_figure(pop_r), str(CHARTS / "scaling_population.html"))
-    viz.save_html(duration_scaling_figure(dur_r), str(CHARTS / "scaling_duration.html"))
-    viz.save_html(throughput_figure(grid_r, pop_r, dur_r), str(CHARTS / "throughput.html"))
+    _save(grid_scaling_figure(grid_r), "scaling_grid")
+    _save(population_scaling_figure(pop_r), "scaling_population")
+    _save(duration_scaling_figure(dur_r), "scaling_duration")
+    _save(throughput_figure(grid_r, pop_r, dur_r), "throughput")
 
     EMBED_DIR.mkdir(parents=True, exist_ok=True)
     for name in CHART_FILES:

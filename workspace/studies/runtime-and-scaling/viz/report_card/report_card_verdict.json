@@ -6,7 +6,7 @@
         {
           "name": "throughput-measured",
           "verdict": "within_tol",
-          "value": 303438.98844775604,
+          "value": 14349.647082512796,
           "reference": 0.0,
           "units": "agent-steps/sec"
         },
@@ -25,7 +25,7 @@
         {
           "name": "duration-near-linear",
           "verdict": "within_tol",
-          "value": 0.9065197184701226,
+          "value": 0.9228868574408792,
           "reference": 0.9,
           "note": "total wall-time vs steps R^2 of a linear fit; population grows during the run (division), which compounds per-step cost and can pull this below strict linearity"
         }

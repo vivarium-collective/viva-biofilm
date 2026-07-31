@@ -22,6 +22,17 @@
           "reference": 0.7,
           "substratum_mean": 0.4378036711742816,
           "boundary_mean": 0.8936377905457225
+        },
+        {
+          "name": "substrate-penetration",
+          "verdict": "within_tol",
+          "value": 0.4899117694059533,
+          "reference": "0.3-0.7 (expected partial-penetration band)",
+          "band_low": 0.3,
+          "band_high": 0.7,
+          "substratum_mean": 0.4378036711742816,
+          "boundary_mean": 0.8936377905457225,
+          "note": "Consistency check vs. expected reaction-diffusion substrate-limitation behavior (boundary richer than substratum, but not fully depleted) -- not a fit to a specific analytic or reference-engine value."
         }
       ]
     }

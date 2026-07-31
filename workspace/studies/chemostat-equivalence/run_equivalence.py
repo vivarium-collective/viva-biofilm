@@ -1,6 +1,7 @@
 import json, math, pathlib
 import plotly.graph_objects as go
 from viva_biofilm.schema import load_chemostat
+from viva_biofilm import viz
 
 HERE = pathlib.Path(__file__).parent
 SPEC = {
@@ -54,9 +55,15 @@ def main():
     charts = HERE / "charts"
     charts.mkdir(exist_ok=True)
     fig.write_html(charts / "decay.html", include_plotlyjs="cdn")
+    # Static PNG sibling -- the dashboard's Charts panel (discover_static_study_charts)
+    # only picks up *.svg/*.png/*.gif under charts/, not embed_visualizations.
+    viz.save_png(fig, str(charts / "decay.png"))
 
-    # verdict: steady-state (final) agreement vs analytic
-    rel_err = abs(s1[-1] - analytic[-1]) / analytic[-1]
+    # verdict: an explicit equivalence check -- simulated final solute1 vs. the
+    # analytic closed-form solution 2*e^(-0.1*t). value = simulated, reference
+    # = analytic, delta/rel_err = the equivalence metrics themselves.
+    delta = s1[-1] - analytic[-1]
+    rel_err = abs(delta) / analytic[-1]
     verdict = "within_tol" if rel_err < 0.01 else ("drift" if rel_err < 0.05 else "mismatch")
     out = {
         "schema": "report_card_verdict/v1",
@@ -64,15 +71,16 @@ def main():
             "chemostat-decay": {
                 "axes": [
                     {"name": "solute1-final-vs-analytic", "verdict": verdict,
-                     "value": s1[-1], "reference": analytic[-1], "rel_err": rel_err},
+                     "value": s1[-1], "reference": analytic[-1],
+                     "delta": delta, "rel_err": rel_err, "units": "g/m^3"},
                 ]
             }
         },
         "oracle_available": oracle is not None,
     }
-    viz = HERE / "viz" / "report_card"
-    viz.mkdir(parents=True, exist_ok=True)
-    (viz / "report_card_verdict.json").write_text(json.dumps(out, indent=2))
+    report_card_dir = HERE / "viz" / "report_card"
+    report_card_dir.mkdir(parents=True, exist_ok=True)
+    (report_card_dir / "report_card_verdict.json").write_text(json.dumps(out, indent=2))
     print(json.dumps(out, indent=2))
 
 if __name__ == "__main__":

@@ -340,3 +340,14 @@ def growth_curves_figure(snapshots: list[dict]) -> go.Figure:
 def save_html(fig: go.Figure, path: str) -> None:
     """Write a self-contained interactive HTML file (Plotly.js loaded from CDN)."""
     fig.write_html(path, include_plotlyjs="cdn")
+
+
+def save_png(fig: go.Figure, path: str) -> None:
+    """Write a static raster PNG via Plotly + kaleido (no browser required).
+
+    Rendered alongside the interactive HTML (same basename) so the dashboard's
+    study-detail Charts panel — which only picks up static ``*.svg``/``*.png``/
+    ``*.gif`` files from a study's ``charts/`` dir, not ``embed_visualizations``
+    — has something to show.
+    """
+    fig.write_image(path, scale=2, width=1000, height=520)

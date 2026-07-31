@@ -29,6 +29,15 @@ N_STEPS = 150
 SNAPSHOT_EVERY = 15
 DT = 0.05
 
+# Expected consistency band for the substratum/boundary ratio under classic
+# reaction-diffusion substrate limitation (e.g. iDynoMiCS-2-style biofilms):
+# a *partial* gradient -- boundary richer than substratum, but not full
+# depletion at the substratum (ratio near 0, which would suggest a numerical
+# artifact) and not a flat/no-gradient profile (ratio >= 1). This is a
+# consistency check against expected qualitative behavior, not a fit to a
+# specific reference value -- keep it honest.
+PENETRATION_BAND = (0.3, 0.7)
+
 CHART_FILES = [
     "colony_final.html",
     "colony_substrate.html",
@@ -37,6 +46,17 @@ CHART_FILES = [
     "timelapse.html",
     "growth_curves.html",
 ]
+
+
+def _save(fig, stem: str) -> None:
+    """Write both the interactive HTML and a static PNG sibling into CHARTS.
+
+    The static PNG is what the dashboard's Charts panel actually renders --
+    discover_static_study_charts only picks up *.svg/*.png/*.gif under
+    charts/, not embed_visualizations (interactive HTML).
+    """
+    viz.save_html(fig, str(CHARTS / f"{stem}.html"))
+    viz.save_png(fig, str(CHARTS / f"{stem}.png"))
 
 
 def gradient_stats(snapshot: dict) -> tuple[float, float, float]:
@@ -70,6 +90,22 @@ def build_verdict(snaps: list[dict]) -> dict:
     else:
         gradient_verdict = "mismatch"
 
+    # Axis 4 (equivalence/consistency): frame the same ratio as a check against
+    # the expected *qualitative* behavior of reaction-diffusion substrate
+    # limitation -- a partial gradient, band-bounded rather than a fabricated
+    # point-match (there is no analytic target for a stochastic, spatial,
+    # multi-agent run the way chemostat-equivalence has one for the well-mixed
+    # ODE). within_tol inside the band; drift just outside it (gradient present
+    # but not textbook-shaped); mismatch if it indicates no gradient (ratio>=1)
+    # or implausible near-total depletion at the substratum (ratio<0.15).
+    band_lo, band_hi = PENETRATION_BAND
+    if band_lo <= ratio <= band_hi:
+        penetration_verdict = "within_tol"
+    elif 0.15 <= ratio < 1.0:
+        penetration_verdict = "drift"
+    else:
+        penetration_verdict = "mismatch"
+
     return {
         "schema": "report_card_verdict/v1",
         "groups": {
@@ -95,6 +131,22 @@ def build_verdict(snaps: list[dict]) -> dict:
                         "substratum_mean": substratum,
                         "boundary_mean": boundary,
                     },
+                    {
+                        "name": "substrate-penetration",
+                        "verdict": penetration_verdict,
+                        "value": ratio,
+                        "reference": f"{band_lo}-{band_hi} (expected partial-penetration band)",
+                        "band_low": band_lo,
+                        "band_high": band_hi,
+                        "substratum_mean": substratum,
+                        "boundary_mean": boundary,
+                        "note": (
+                            "Consistency check vs. expected reaction-diffusion "
+                            "substrate-limitation behavior (boundary richer than "
+                            "substratum, but not fully depleted) -- not a fit to a "
+                            "specific analytic or reference-engine value."
+                        ),
+                    },
                 ]
             }
         },
@@ -109,15 +161,17 @@ def main() -> None:
     CHARTS.mkdir(parents=True, exist_ok=True)
     REPORT_CARD.mkdir(parents=True, exist_ok=True)
 
-    viz.save_html(viz.colony_figure(last, color_by="mass", dx=DX), str(CHARTS / "colony_final.html"))
-    viz.save_html(viz.colony_figure(last, color_by="local_substrate", dx=DX), str(CHARTS / "colony_substrate.html"))
-    viz.save_html(viz.solute_field_figure(last, "solute", dx=DX), str(CHARTS / "solute_substrate.html"))
-    viz.save_html(viz.solute_field_figure(last, "oxygen", dx=DX), str(CHARTS / "solute_oxygen.html"))
-    viz.save_html(viz.timelapse_figure(snaps, color_by="mass", dx=DX), str(CHARTS / "timelapse.html"))
-    viz.save_html(viz.growth_curves_figure(snaps), str(CHARTS / "growth_curves.html"))
+    _save(viz.colony_figure(last, color_by="mass", dx=DX), "colony_final")
+    _save(viz.colony_figure(last, color_by="local_substrate", dx=DX), "colony_substrate")
+    _save(viz.solute_field_figure(last, "solute", dx=DX), "solute_substrate")
+    _save(viz.solute_field_figure(last, "oxygen", dx=DX), "solute_oxygen")
+    _save(viz.timelapse_figure(snaps, color_by="mass", dx=DX), "timelapse")
+    _save(viz.growth_curves_figure(snaps), "growth_curves")
 
-    # Mirror the charts into reports/figures/<study>/ for study.yaml's
-    # embed_visualizations (workspace-root-relative /reports/figures/... URLs).
+    # Mirror the interactive charts into reports/figures/<study>/ for
+    # study.yaml's embed_visualizations (workspace-root-relative
+    # /reports/figures/... URLs). The .png siblings stay in charts/ only --
+    # that's what discover_static_study_charts reads for the dashboard panel.
     EMBED_DIR.mkdir(parents=True, exist_ok=True)
     for name in CHART_FILES:
         shutil.copy2(CHARTS / name, EMBED_DIR / name)

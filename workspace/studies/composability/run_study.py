@@ -50,6 +50,17 @@ LOW_WINDOW = (1.0, 3.0)
 CHART_FILES = ["response.html", "colony_before.html", "colony_after.html"]
 
 
+def _save(fig, stem: str) -> None:
+    """Write both the interactive HTML and a static PNG sibling into CHARTS.
+
+    The static PNG is what the dashboard's Charts panel actually renders --
+    discover_static_study_charts only picks up *.svg/*.png/*.gif under
+    charts/, not embed_visualizations (interactive HTML).
+    """
+    viz.save_html(fig, str(CHARTS / f"{stem}.html"))
+    viz.save_png(fig, str(CHARTS / f"{stem}.png"))
+
+
 def _trace_point(world, boundary_value: float) -> dict:
     return {
         "time": world.time(),
@@ -238,13 +249,13 @@ def main() -> None:
     perturbed, colony_before, colony_after = run_perturbed()
     control = run_control()
 
-    viz.save_html(response_figure(perturbed, control), str(CHARTS / "response.html"))
-    viz.save_html(viz.colony_figure(colony_before, color_by="mass",
-                                     title=f"Colony before perturbation (t={colony_before['time']:.2f} d)"),
-                  str(CHARTS / "colony_before.html"))
-    viz.save_html(viz.colony_figure(colony_after, color_by="mass",
-                                     title=f"Colony after perturbation (t={colony_after['time']:.2f} d)"),
-                  str(CHARTS / "colony_after.html"))
+    _save(response_figure(perturbed, control), "response")
+    _save(viz.colony_figure(colony_before, color_by="mass",
+                             title=f"Colony before perturbation (t={colony_before['time']:.2f} d)"),
+          "colony_before")
+    _save(viz.colony_figure(colony_after, color_by="mass",
+                             title=f"Colony after perturbation (t={colony_after['time']:.2f} d)"),
+          "colony_after")
 
     EMBED_DIR.mkdir(parents=True, exist_ok=True)
     for name in CHART_FILES:
