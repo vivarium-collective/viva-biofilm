@@ -8,8 +8,6 @@ layout:
   composites: viva_biofilm/composites
   references: workspace/references
   datasets: workspace/datasets
-  notes: workspace/notes
-  experiments: workspace/experiments
   reports: reports
 observables: []
 visualizations: []
