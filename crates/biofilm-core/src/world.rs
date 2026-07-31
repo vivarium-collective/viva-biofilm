@@ -486,6 +486,16 @@ impl World {
         self.agents.iter().map(|a| a.mass).sum()
     }
 
+    /// Count agents of a given species.
+    pub fn population_of(&self, species_idx: usize) -> usize {
+        self.agents.iter().filter(|a| a.species as usize == species_idx).count()
+    }
+
+    /// Sum the mass of agents of a given species.
+    pub fn biomass_of(&self, species_idx: usize) -> f64 {
+        self.agents.iter().filter(|a| a.species as usize == species_idx).map(|a| a.mass).sum()
+    }
+
     pub fn biofilm_thickness(&self) -> f64 {
         self.agents.iter().map(|a| a.y).fold(0.0, f64::max)
     }
