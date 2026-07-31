@@ -5,3 +5,4 @@ pub mod reaction;
 pub mod agent;
 pub mod relaxation;
 pub mod detachment;
+pub mod chemostat;
