@@ -29,8 +29,13 @@ report:
     steps gives R^2=0.907 -- close to linear but not exact, because
     population grows via division over the course of a run (40 -> 640
     agents over 160 steps), which compounds per-step cost as the run
-    lengthens. Peak measured throughput across all sweeps: ~303,000
-    agent-steps/sec.
+    lengthens. Absolute throughput is single-threaded and machine-load-
+    dependent: the per-step timings above and a peak of ~3e5 agent-steps/sec
+    were measured on an unloaded machine, while the same sweeps re-run under
+    heavy concurrent load recorded ~1.4e4 agent-steps/sec. The robust,
+    hardware-independent result is the SCALING SHAPE above, not the absolute
+    rate; a clean re-run on an idle machine is needed for a representative
+    peak figure.
   interpretation: |
     The engine is fast and its scaling is well-behaved: no configuration in
     any of the three fixed sweeps approached the 30s slow threshold (worst
@@ -42,7 +47,7 @@ report:
     noise, and is reported here rather than smoothed over.
 study_card:
   phase: Simulate / Evaluate
-  one_liner: "~303k agent-steps/sec peak; grid/population/duration sweeps all produced, no slow configs."
+  one_liner: "Single-threaded throughput ~1.4e4-3e5 agent-steps/sec (machine-load-dependent); grid/population/duration scaling curves all produced, no slow configs."
   status: complete
   headline: "PASS — fast, well-scaling, throughput measured."
 conditions:
