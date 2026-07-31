@@ -5,6 +5,49 @@ use crate::agent::Agent;
 use crate::grid::{Grid, SoluteField};
 use crate::reaction::{Monod, Reaction};
 
+// ---- Unit convention (Task 1: reconciled) ------------------------------
+//
+// Internal unit system, used consistently everywhere in this module:
+//   length         µm
+//   time           day
+//   agent mass     pg
+//   solute conc.   g/m³
+//
+// Two unit gaps existed in Phase A and are fixed here:
+//
+// 1. Diffusivity time base. The schema/`simple.xml` layer supplies solute
+//    diffusivities in µm²/s (the natural unit for a diffusion coefficient),
+//    but the quasi-steady solver (`grid::solve_steady_state`) is run once
+//    per `step(dt)` with `dt` in days and combines D with a sink that is
+//    itself per-day (`bio_rate` below is pg/day, since `mu_max` in
+//    `add_reaction` is a per-day specific rate). For `D*laplacian(C) = sink`
+//    to balance dimensionally, D must also be per-day. We convert once,
+//    where the field is built (`add_solute`), by the fixed factor
+//    `SECONDS_PER_DAY = 86400.0`: `diff_liquid[µm²/day] = diff_liquid[µm²/s]
+//    * 86400.0`. Without this conversion D is ~86400x too small relative to
+//    the day-scaled sink, so diffusive replenishment cannot keep up with
+//    consumption and the field is driven to zero (over-depletion).
+//
+// 2. Sink concentration units. `bio_rate` (from `Reaction::biomass_rate`) is
+//    in pg/day; dividing by `cell_vol` (a µm² grid-cell area, used as a
+//    stand-in "volume" for this 2D model) gives pg/µm²/day, which the
+//    original code accumulated directly into a sink meant to be consumed
+//    against a g/m³ field — a ~1e6 unit mismatch (1 pg/µm³ = 1e6 g/m³,
+//    since 1 µm³ = 1e-18 m³ and 1 pg = 1e-12 g). We apply the missing
+//    conversion factor `PG_PER_UM3_TO_G_PER_M3` explicitly (see `step`
+//    below) so the sink accumulated in g/m³/day is commensurate with the
+//    solute field it acts on.
+//
+// With both gaps closed, the dominant balance `D*laplacian(C) ~ sink` sets
+// a penetration depth `~ sqrt(D * C_bulk / sink)` that is now a real
+// (finite, non-degenerate) fraction of the domain height for the reference
+// `simple.xml`-equivalent parameters, producing a partial (not flat, not
+// fully-depleted) substrate gradient as the biofilm grows. See
+// `tests/gradient.rs` for the validating assertions.
+const SECONDS_PER_DAY: f64 = 86_400.0;
+/// pg/µm³ -> g/m³ (1 µm³ = 1e-18 m³, 1 pg = 1e-12 g -> 1 pg/µm³ = 1e6 g/m³).
+const PG_PER_UM3_TO_G_PER_M3: f64 = 1.0e6;
+
 /// A recorded request to spawn `n` agents randomly within a substratum-adjacent
 /// band of height `band_height`, using an independent RNG stream derived from
 /// `seed_offset` so multiple spawn groups don't collide. Actual placement is
@@ -69,6 +112,11 @@ impl World {
         self.layer_thickness = layer_thickness;
     }
 
+    /// `diff_liquid`/`diff_biofilm` are given in µm²/s at the schema layer
+    /// (the natural unit for a diffusion coefficient). Converted once here
+    /// to µm²/day (`* SECONDS_PER_DAY`) so the field's diffusivity is
+    /// dimensionally consistent with the day-scaled solver and sink — see
+    /// the unit-convention note at the top of this file.
     pub fn add_solute(
         &mut self,
         name: &str,
@@ -77,11 +125,13 @@ impl World {
         diff_biofilm: f64,
         bulk: f64,
     ) -> usize {
-        let mut field = SoluteField::new(&self.grid, init, diff_liquid);
+        let diff_liquid_per_day = diff_liquid * SECONDS_PER_DAY;
+        let diff_biofilm_per_day = diff_biofilm * SECONDS_PER_DAY;
+        let mut field = SoluteField::new(&self.grid, init, diff_liquid_per_day);
         field.bulk = bulk;
         self.solutes.push(field);
         self.solute_names.push(name.to_string());
-        self.diff_biofilm.push(diff_biofilm);
+        self.diff_biofilm.push(diff_biofilm_per_day);
         self.solutes.len() - 1
     }
 
@@ -150,29 +200,16 @@ impl World {
             for rxn in &self.reactions {
                 let bio_rate = rxn.biomass_rate(a.mass, &concs); // pg/day
                 for &(k, coeff) in &rxn.yield_per_solute {
-                    // consumption of solute k: coeff (negative) * biomass rate, per cell volume
-                    //
-                    // UNIT NOTE (documented, not fixed — see TODO below): the
-                    // internal unit system here is length=µm, mass=pg,
-                    // time=day, and solute fields are carried in g/m³. This
-                    // sink term is `-coeff * bio_rate / cell_vol`, i.e.
-                    // (dimensionless yield coeff) * pg/day / µm² (`cell_vol`
-                    // is a 2D µm² cell area, not a true µm³ volume), which
-                    // works out to pg/µm²/day, not the g/m³/day the solute
-                    // field expects. Converting pg/µm³ -> g/m³ requires a
-                    // 1e6 factor (1 pg/µm³ = 1e6 g/m³, since 1 µm³ = 1e-18 m³
-                    // and 1 pg = 1e-12 g), and there is currently a 2D-area
-                    // vs 3D-volume mismatch on top of that (cell_vol should
-                    // include the layer/unit depth if this is meant to model
-                    // a true volumetric concentration).
-                    // TODO(phase-b): reconcile this sink scaling (suspected
-                    // ~1e6 gap, plus the area-vs-volume question) against the
-                    // real iDynoMiCS-2 Java oracle once the biofilm-
-                    // equivalence study lands (Phase A validates only the
-                    // chemostat, which has no PDE/solute-sink path, so no
-                    // current test exercises this number). Do not change the
-                    // constant without a validating oracle comparison.
-                    sinks[k][self.grid.idx(i, j)] += -coeff * bio_rate / cell_vol;
+                    // sink [g/m³/day] = -coeff * bio_rate[pg/day] / cell_vol[µm²]
+                    //                   * PG_PER_UM3_TO_G_PER_M3
+                    // (`cell_vol` is a 2D µm² cell area used as a
+                    // volume stand-in for this 2D model; see the unit note
+                    // at the top of this file for the pg/µm³ -> g/m³
+                    // derivation of the 1e6 factor. cell_vol/area convention
+                    // is unchanged from Phase A — only the previously-
+                    // missing 1e6 factor is new.)
+                    sinks[k][self.grid.idx(i, j)] +=
+                        -coeff * bio_rate / cell_vol * PG_PER_UM3_TO_G_PER_M3;
                 }
             }
         }
@@ -233,6 +270,23 @@ impl World {
     pub fn solute_mean(&self, k: usize) -> f64 {
         let f = &self.solutes[k];
         f.conc.iter().sum::<f64>() / f.conc.len() as f64
+    }
+
+    /// Mean concentration of the named solute's field over grid row `j`
+    /// (averaged over all `i`). Resolves `name` to a solute index via
+    /// `solute_names`; panics if the name is unknown.
+    pub fn solute_row_mean(&self, name: &str, j: usize) -> f64 {
+        let k = self
+            .solute_names
+            .iter()
+            .position(|n| n == name)
+            .unwrap_or_else(|| panic!("unknown solute name: {name}"));
+        let f = &self.solutes[k];
+        let mut sum = 0.0;
+        for i in 0..self.grid.nx {
+            sum += f.conc[self.grid.idx(i, j)];
+        }
+        sum / self.grid.nx as f64
     }
 
     pub fn agents(&self) -> &[Agent] {
