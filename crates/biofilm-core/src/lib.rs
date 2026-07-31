@@ -3,3 +3,4 @@ pub mod world;
 pub use world::World;
 pub mod reaction;
 pub mod agent;
+pub mod relaxation;
