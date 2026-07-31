@@ -1,0 +1,63 @@
+name: README check
+
+# README.md's Composites + Investigations tables are generated from the
+# workspace by `vivarium-workbench gen-readme` (composites via
+# composite_lookup, investigations from investigation.yaml). This job needs
+# vivarium-workbench + the workspace importable, so it uses the full env (like
+# publish-dashboard.yml), not a lean PyPI-only install.
+#
+# viva-biofilm has a Rust extension (viva_biofilm.biofilm_core, built via
+# maturin) that MUST be built before composite discovery can import the
+# workspace package — see the "Build the Rust extension" step below.
+#
+# Regenerate locally with: vivarium-workbench gen-readme --workspace .
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  readme-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        # viva-biofilm has no committed uv.lock, so `uv sync` isn't available —
+        # build a venv and install the project (dev extra) directly.
+        run: |
+          uv venv .venv
+          uv pip install -e ".[dev]"
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Build the Rust extension
+        # composite discovery imports viva_biofilm.biofilm_core (the
+        # maturin-built .so) — build it into the venv before gen-readme tries
+        # to load the workspace.
+        run: |
+          source .venv/bin/activate 2>/dev/null || true
+          uv pip install maturin
+          maturin develop -m crates/biofilm-py/Cargo.toml
+
+      - name: Install latest vivarium-workbench (for gen-readme)
+        # A pinned/older vivarium-workbench may predate the gen-readme
+        # command; reinstall @main so the CLI subcommand is present.
+        run: uv pip install --reinstall-package vivarium-workbench "vivarium-workbench @ git+https://github.com/vivarium-collective/vivarium-workbench.git@main"
+
+      - name: Check README generated sections are fresh
+        # NB: activate the venv rather than `uv run` — `uv run` re-syncs and
+        # would undo the ad-hoc vivarium-workbench@main install above.
+        run: |
+          source .venv/bin/activate
+          vivarium-workbench gen-readme --workspace "$PWD" --check

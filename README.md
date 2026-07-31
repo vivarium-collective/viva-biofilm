@@ -8,7 +8,7 @@ a vivarium-workspace, so a biofilm composes with other simulators and is driven
 through the shared research dashboard.
 
 > 🌐 **Read-only dashboard:** browse this workspace's investigations and studies at
-> **https://vivarium-collective.github.io/viva-biofilm/** (published from `main`).
+> **https://vivarium-collective.github.io/viva-biofilm/dashboard/** (published from `main`).
 
 ## Composites
 

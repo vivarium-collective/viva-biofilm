@@ -1,0 +1,155 @@
+name: Publish investigation reports
+
+# Regenerate every investigation's self-contained HTML report and publish it to
+# the gh-pages branch at investigations/<slug>.html. The report is built by the
+# vivarium-workbench SPA client-side, so we serve the dashboard headlessly and
+# drive its "Generate report" button via Playwright
+# (scripts/publish_investigation_reports.py).
+#
+# This is a DEPLOY job (post-merge to main), not a PR gate — a failure here
+# never blocks a merge. It only ever writes investigations/*.html on gh-pages;
+# the landing-page gallery there is regenerated, everything else left
+# untouched.
+#
+# viva-biofilm has a Rust extension (viva_biofilm.biofilm_core, built via
+# maturin) that MUST be built before composite discovery can import the
+# workspace package — see the "Build the Rust extension" step below. v2ecoli
+# (the reference this workflow was copied from) has no such step.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      # Only republish when something that changes a report changed.
+      - 'workspace/**'
+      # Root workspace.yaml is NOT under workspace/** — list it explicitly so
+      # layout/registry changes republish the reports too.
+      - 'workspace.yaml'
+      - 'reports/figures/**'
+      - 'crates/**'
+      - 'viva_biofilm/**'
+      - 'scripts/publish_investigation_reports.py'
+      - '.github/workflows/publish-reports.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: publish-reports
+  cancel-in-progress: true
+
+permissions:
+  contents: write   # push to the gh-pages branch
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    # Investigation reports embed the loom Explorer — require the bundle so a
+    # missing/broken build fails loudly rather than publishing without it.
+    env:
+      VIVARIUM_WORKBENCH_REQUIRE_LOOM: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12.9
+
+      - name: Install dependencies
+        # viva-biofilm has no committed uv.lock, so `uv sync` isn't available —
+        # build a venv and install the project (dev extra) directly.
+        run: |
+          uv venv .venv
+          uv pip install -e ".[dev]"
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Build the Rust extension
+        # composite discovery imports viva_biofilm.biofilm_core (the
+        # maturin-built .so) — build it into the venv before the dashboard
+        # server (spawned below) tries to load the workspace.
+        run: |
+          source .venv/bin/activate 2>/dev/null || true
+          uv pip install maturin
+          maturin develop -m crates/biofilm-py/Cargo.toml
+
+      - name: Install Playwright + Chromium
+        # Playwright is only needed by this deploy job, so install it into the
+        # project env here rather than carrying it as a project dependency.
+        run: |
+          source .venv/bin/activate
+          uv pip install playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Ensure the publish CLI is current (latest main)
+        # This DEPLOY job renders the workbench SPA headlessly, so it needs
+        # vivarium-workbench even if it's only a dev-extra at runtime. Mirror
+        # publish-dashboard.yml exactly: ad-hoc install workbench@main, and run
+        # the generator inside the activated venv (below) rather than via `uv
+        # run`, which would re-sync and undo this install.
+        run: |
+          uv pip install --reinstall-package vivarium-workbench "vivarium-workbench @ git+https://github.com/vivarium-collective/vivarium-workbench.git@main"
+
+      - name: Generate investigation reports
+        id: gen
+        # Spawns `vivarium-workbench serve`, drives each investigation's report
+        # export headlessly, writes reports/published/investigations/<slug>.html.
+        # Keep going on a per-report failure so good reports still publish; the
+        # script's exit code is recorded for the final status gate.
+        run: |
+          set +e
+          # Activated venv (not `uv run`): `uv run` re-syncs, undoing the
+          # ad-hoc workbench@main install and dropping `vivarium-workbench serve`.
+          source .venv/bin/activate
+          python scripts/publish_investigation_reports.py \
+            --workspace . --out reports/published
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Publish generated reports to gh-pages
+        # Surgical: copy ONLY the freshly-generated investigations/*.html onto
+        # gh-pages via a worktree. Never deletes — a report that failed to
+        # regenerate keeps its previous published copy. Commits only on a diff.
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          generated=(reports/published/investigations/*.html)
+          if [ ${#generated[@]} -eq 0 ]; then
+            echo "no reports were generated; nothing to publish"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin gh-pages
+          git worktree add /tmp/ghp gh-pages
+          mkdir -p /tmp/ghp/investigations
+          cp reports/published/investigations/*.html /tmp/ghp/investigations/
+          # Regenerate the landing-page investigation list (between the
+          # auto-investigations markers in index.html) so the root gallery lists
+          # every investigation with a published report — no hand-curation.
+          python3 scripts/inject_index_fragment.py \
+            reports/published/investigations_index.html /tmp/ghp/index.html
+          cd /tmp/ghp
+          git add investigations/*.html index.html
+          if git diff --cached --quiet; then
+            echo "no report content changed; skipping commit"
+          else
+            git commit -m "gh-pages: republish investigation reports + landing list (automated, ${GITHUB_SHA::7})"
+            git push origin gh-pages
+            echo "published $(ls investigations/*.html | wc -l) investigation reports"
+          fi
+
+      - name: Fail only if NO reports were published
+        # Run AFTER publishing. The generator exits non-zero only when NOTHING
+        # published (total breakage / server never came up); a partial run exits
+        # 0 and ships every report that rendered. So one stubborn investigation
+        # no longer reds the whole deploy — the good reports still go out.
+        # Individual failures are printed to the log for visibility.
+        run: |
+          code="${{ steps.gen.outputs.exit_code }}"
+          if [ "$code" != "0" ]; then
+            echo "::error::no investigation reports were published (publish_investigation_reports.py exit $code)"
+            exit 1
+          fi
