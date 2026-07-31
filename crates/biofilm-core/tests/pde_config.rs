@@ -64,6 +64,31 @@ fn set_pde_params_is_configurable_and_deterministic() {
     assert_eq!(a, b, "custom pde params must remain deterministic");
 }
 
+/// `set_pde_params` must reject an out-of-range omega rather than silently
+/// letting it reach the solver, where `omega >= 2.0` drives SOR to
+/// divergence (NaN/Inf), corrupting population/biomass with no error
+/// surfaced.
+#[test]
+#[should_panic(expected = "omega must be in [1.0, 2.0)")]
+fn set_pde_params_rejects_omega_at_or_above_two() {
+    let mut w = build_world();
+    w.set_pde_params(1e-4, 2_000, 2.1);
+}
+
+#[test]
+#[should_panic(expected = "tol must be > 0.0")]
+fn set_pde_params_rejects_non_positive_tol() {
+    let mut w = build_world();
+    w.set_pde_params(0.0, 2_000, 1.8);
+}
+
+#[test]
+#[should_panic(expected = "max_iter must be > 0")]
+fn set_pde_params_rejects_zero_max_iter() {
+    let mut w = build_world();
+    w.set_pde_params(1e-4, 0, 1.8);
+}
+
 /// The fast defaults (tol=1e-4, max_iter=2000, omega=1.8), used implicitly
 /// when `set_pde_params` is never called, must still be an unambiguous
 /// improvement over the old defaults in the sense that they converge inside

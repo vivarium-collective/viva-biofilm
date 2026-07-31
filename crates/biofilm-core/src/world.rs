@@ -176,7 +176,22 @@ impl World {
     /// Safe to call any time before or after `finalize`; defaults (set in
     /// `World::new`) are the fast values tol=1e-4, max_iter=2000,
     /// omega=1.8.
+    ///
+    /// # Panics
+    /// Panics with a descriptive message if `omega` is outside `[1.0, 2.0)`
+    /// (SOR requires `1 <= omega < 2` for guaranteed convergence; `>= 2.0`
+    /// drives the iteration to divergence, `< 1.0` is under-relaxation, not
+    /// the intended over-relaxation regime), if `tol <= 0.0`, or if
+    /// `max_iter == 0`. This is a safety net for direct Rust callers; the
+    /// pyo3 binding validates first and raises a `PyValueError` instead of
+    /// letting an invalid value reach here.
     pub fn set_pde_params(&mut self, tol: f64, max_iter: usize, omega: f64) {
+        assert!(
+            (1.0..2.0).contains(&omega),
+            "set_pde_params: omega must be in [1.0, 2.0) for SOR convergence, got {omega}"
+        );
+        assert!(tol > 0.0, "set_pde_params: tol must be > 0.0, got {tol}");
+        assert!(max_iter > 0, "set_pde_params: max_iter must be > 0, got {max_iter}");
         self.pde_tol = tol;
         self.pde_max_iter = max_iter;
         self.pde_omega = omega;

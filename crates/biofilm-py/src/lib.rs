@@ -62,8 +62,23 @@ impl World {
 
     /// Configure the PDE (SOR) solver knobs: `tol`, `max_iter`, `omega`.
     /// Defaults to the fast values (1e-4, 2000, 1.8) if never called.
-    fn set_pde_params(&mut self, tol: f64, max_iter: usize, omega: f64) {
+    /// Raises `ValueError` (rather than letting an invalid value reach the
+    /// solver and silently diverge to NaN/Inf) if `omega` is not in
+    /// `[1.0, 2.0)`, `tol <= 0.0`, or `max_iter == 0`.
+    fn set_pde_params(&mut self, tol: f64, max_iter: usize, omega: f64) -> PyResult<()> {
+        if !(1.0..2.0).contains(&omega) {
+            return Err(PyValueError::new_err(format!(
+                "omega must be in [1.0, 2.0) for SOR convergence, got {omega}"
+            )));
+        }
+        if !(tol > 0.0) {
+            return Err(PyValueError::new_err(format!("tol must be > 0.0, got {tol}")));
+        }
+        if max_iter == 0 {
+            return Err(PyValueError::new_err("max_iter must be > 0, got 0"));
+        }
         self.inner.set_pde_params(tol, max_iter, omega);
+        Ok(())
     }
 
     fn spawn_agents(&mut self, n: usize, band_height: f64, seed_offset: u64) {
