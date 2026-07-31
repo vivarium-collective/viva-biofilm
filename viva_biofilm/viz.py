@@ -138,15 +138,25 @@ def colony_figure(snapshot: dict, color_by: str = "mass", title: str | None = No
     x_max, y_max = _domain_extent(snapshot, dx)
     traces = _colony_traces(snapshot, color_by, dx, x_max, y_max)
 
+    # Crop the vertical view to the biofilm (+ headroom) so the colony fills the
+    # frame instead of floating in a mostly-empty tall domain.
+    top_agent = max(snapshot["agents"]["y"], default=0.0)
+    view_h = min(y_max, max(top_agent * 1.5, 16.0))
+
     fig_title = title or f"Colony — t={snapshot['time']:.2f} d, n={snapshot['population']}"
     layout = _base_layout(fig_title)
     layout.update(
-        xaxis=dict(title="x (µm)", range=[0, x_max], showgrid=False, zeroline=False),
+        height=460,
+        # constrain="domain" keeps equal aspect (round cells) by fitting the plot
+        # box to the data, NOT by inflating the x-range to fill a wide container.
+        xaxis=dict(title="x (µm)", range=[0, x_max], constrain="domain",
+                   showgrid=False, zeroline=False),
         yaxis=dict(
             title="height above substratum (µm)",
-            range=[0, y_max],
+            range=[0, view_h],
             scaleanchor="x",
             scaleratio=1,
+            constrain="domain",
             showgrid=False,
             zeroline=False,
         ),
@@ -177,13 +187,15 @@ def solute_field_figure(snapshot: dict, name: str, title: str | None = None,
     fig_title = title or f"{name} field — t={snapshot['time']:.2f} d"
     layout = _base_layout(fig_title)
     layout.update(
-        xaxis=dict(title="x (µm)", showgrid=False, zeroline=False),
+        height=480,
+        # The gradient is vertical (boundary at top -> substratum at bottom); let
+        # the heatmap fill the width rather than force a narrow equal-aspect column.
+        xaxis=dict(title="x (µm)", range=[0, (nx - 1) * dx], showgrid=False, zeroline=False),
         yaxis=dict(
             title="height above substratum (µm)",
+            range=[0, (ny - 1) * dx],
             showgrid=False,
             zeroline=False,
-            scaleanchor="x",
-            scaleratio=1,
         ),
     )
     return go.Figure(data=[heatmap], layout=layout)
@@ -198,6 +210,9 @@ def timelapse_figure(snapshots: list[dict], color_by: str = "mass", title: str |
     # Global domain extent (same domain across the run, but computed once to be safe).
     x_max = max(_domain_extent(s, dx)[0] for s in snapshots)
     y_max = max(_domain_extent(s, dx)[1] for s in snapshots)
+    # Crop vertical view to the tallest biofilm across the run (+ headroom).
+    top_agent = max((max(s["agents"]["y"], default=0.0) for s in snapshots), default=0.0)
+    view_h = min(y_max, max(top_agent * 1.5, 16.0))
 
     frames = []
     for i, snap in enumerate(snapshots):
@@ -210,12 +225,15 @@ def timelapse_figure(snapshots: list[dict], color_by: str = "mass", title: str |
     fig_title = title or "Colony time-lapse"
     layout = _base_layout(fig_title)
     layout.update(
-        xaxis=dict(title="x (µm)", range=[0, x_max], showgrid=False, zeroline=False),
+        height=460,
+        xaxis=dict(title="x (µm)", range=[0, x_max], constrain="domain",
+                   showgrid=False, zeroline=False),
         yaxis=dict(
             title="height above substratum (µm)",
-            range=[0, y_max],
+            range=[0, view_h],
             scaleanchor="x",
             scaleratio=1,
+            constrain="domain",
             showgrid=False,
             zeroline=False,
         ),
