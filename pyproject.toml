@@ -16,5 +16,20 @@ manifest-path = "crates/biofilm-py/Cargo.toml"
 module-name = "viva_biofilm.biofilm_core"
 python-source = "."
 
+# vivarium-workbench is not published to PyPI — resolve the dev extra's plain
+# "vivarium-workbench" entry from its git repo (uv applies sources to direct
+# deps of the project, which the dev extra counts as). CI reinstalls it
+# ad-hoc pinned to the latest main afterward (see .github/workflows/); this
+# source just makes a bare `uv pip install -e ".[dev]"` resolvable at all.
+#
+# vivarium-workbench@main requires process-bigraph>=1.7.0, but the last PyPI
+# release of process-bigraph is 1.5.0 — pin process-bigraph (and
+# bigraph-schema, which tracks it) to their git main too, so the two resolve
+# together. Mirrors v2ecoli's pyproject.toml [tool.uv.sources].
+[tool.uv.sources]
+vivarium-workbench = { git = "https://github.com/vivarium-collective/vivarium-workbench.git", branch = "main" }
+process-bigraph = { git = "https://github.com/vivarium-collective/process-bigraph.git", branch = "main" }
+bigraph-schema = { git = "https://github.com/vivarium-collective/bigraph-schema.git", branch = "main" }
+
 [tool.pytest.ini_options]
 pythonpath = ["."]
