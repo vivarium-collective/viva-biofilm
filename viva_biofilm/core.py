@@ -8,10 +8,12 @@ import process_bigraph as pb
 
 from viva_biofilm.processes.biofilm_process import BiofilmProcess
 from viva_biofilm.processes.chemostat_process import ChemostatProcess
+from viva_biofilm.processes.controller_process import BoundaryControllerProcess
 
 
 def build_core():
     core = pb.allocate_core()
     core.register_link("BiofilmProcess", BiofilmProcess)
     core.register_link("ChemostatProcess", ChemostatProcess)
+    core.register_link("BoundaryControllerProcess", BoundaryControllerProcess)
     return core

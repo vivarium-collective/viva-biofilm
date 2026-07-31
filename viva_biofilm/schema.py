@@ -15,6 +15,11 @@ def load_world(spec: dict):
         w.add_reaction(r["mu_max"], monod, yields)
     sp = spec["species"]
     w.set_species(sp["density"], sp["division_mass"])
+    pde = spec.get("pde")
+    if pde:
+        w.set_pde_params(
+            pde.get("tol", 1e-4), pde.get("max_iter", 2000), pde.get("omega", 1.8)
+        )
     sw = spec["spawn"]
     w.spawn_agents(sw["n"], sw["band_height"], sw.get("seed_offset", 0))
     w.finalize(int(spec.get("seed", 0)))

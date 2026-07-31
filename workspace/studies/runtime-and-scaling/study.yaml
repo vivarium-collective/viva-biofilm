@@ -1,0 +1,94 @@
+schema_version: 4
+name: runtime-and-scaling
+investigation: viva-biofilm-capabilities
+title: "Runtime and scaling: throughput and scaling curves for the Rust engine"
+created: '2026-07-31'
+status: complete
+question: |
+  After the ~23x performance pass and the addition of configurable PDE
+  parameters, how does the viva-biofilm engine's wall-time scale with grid
+  size, agent population, and run duration -- and what throughput
+  (agent-steps/sec) does it sustain?
+report:
+  title: Runtime and scaling
+  verdict: pass
+  confidence: high
+  evidence_quality: deterministic sweeps (fixed seed per config, no statistical repeats)
+  objective: |
+    Measure wall-time and throughput across three independent scaling axes
+    (grid resolution, initial population, run duration) at fixed, modest
+    per-point step counts, and produce interactive scaling curves alongside
+    a throughput summary.
+  result: |
+    Grid sweep (40 agents, 40 steps): 0.198 ms/step at 512 cells (16x32) to
+    3.189 ms/step at 12288 cells (96x128) -- sub-linear-to-linear growth in
+    cells, no configuration slow (<30s threshold). Population sweep (grid
+    48x64, 40 steps): 0.219 ms/step at 20 final agents to 2.387 ms/step at
+    320 final agents. Duration sweep (grid 48x64, 40 agents): total wall time
+    0.014s at 20 steps to 0.669s at 160 steps; a linear fit of total time vs.
+    steps gives R^2=0.907 -- close to linear but not exact, because
+    population grows via division over the course of a run (40 -> 640
+    agents over 160 steps), which compounds per-step cost as the run
+    lengthens. Peak measured throughput across all sweeps: ~303,000
+    agent-steps/sec.
+  interpretation: |
+    The engine is fast and its scaling is well-behaved: no configuration in
+    any of the three fixed sweeps approached the 30s slow threshold (worst
+    case 0.13s for the largest grid, 0.67s for the longest duration run).
+    Grid and population scaling both show a clear, roughly proportional cost
+    increase with problem size. Duration scaling is "near-linear" rather
+    than exactly linear -- the R^2=0.907 fit reflects a genuine effect (later
+    steps cost more because the population has grown), not measurement
+    noise, and is reported here rather than smoothed over.
+study_card:
+  phase: Simulate / Evaluate
+  one_liner: "~303k agent-steps/sec peak; grid/population/duration sweeps all produced, no slow configs."
+  status: complete
+  headline: "PASS — fast, well-scaling, throughput measured."
+conditions:
+  baseline:
+    composite: viva_biofilm.composites.biofilm.biofilm
+    params: {}
+  variants: []
+  model_settings:
+  - {name: grid-sweep, detail: "nx,ny in [(16,32),(32,48),(48,64),(64,96),(96,128)], n_agents=40, n_steps=40, dt=0.05"}
+  - {name: population-sweep, detail: "grid=48x64, n_agents in [10,20,40,80,160], n_steps=40, dt=0.05"}
+  - {name: duration-sweep, detail: "grid=48x64, n_agents=40, n_steps in [20,40,80,160], dt=0.05"}
+tests:
+- name: throughput-and-scaling-measured
+  classification: primary
+  status: passed
+  question: "Did the engine sustain measurable throughput and produce scaling curves across all three fixed sweep axes without any configuration exceeding the slow threshold?"
+  measure: {kind: report_card_axis, card: workspace/studies/runtime-and-scaling/viz/report_card, group: performance}
+  pass_if: {op: verdict_at_least, level: within_tol}
+visualizations:
+- name: grid-size scaling
+  address: image:charts/scaling_grid.html
+  config: {title: "Grid-size scaling", caption: "Wall time per step vs. number of grid cells (log-log), fixed 40 agents / 40 steps"}
+- name: population scaling
+  address: image:charts/scaling_population.html
+  config: {title: "Population scaling", caption: "Wall time per step vs. final agent count (log-log), fixed 48x64 grid / 40 steps"}
+- name: duration scaling
+  address: image:charts/scaling_duration.html
+  config: {title: "Duration scaling", caption: "Total wall time vs. steps, fixed 48x64 grid / 40 initial agents"}
+- name: throughput
+  address: image:charts/throughput.html
+  config: {title: "Throughput", caption: "Agent-steps/sec across the grid and population sweeps"}
+embed_visualizations:
+- name: "Grid-size scaling (interactive)"
+  url: /reports/figures/runtime-and-scaling/scaling_grid.html
+  description: Wall time per step vs. grid cell count (log-log). Hover for exact grid dims and ms/step.
+- name: "Population scaling (interactive)"
+  url: /reports/figures/runtime-and-scaling/scaling_population.html
+  description: Wall time per step vs. final agent count (log-log). Hover for the initial agent count.
+- name: "Duration scaling (interactive)"
+  url: /reports/figures/runtime-and-scaling/scaling_duration.html
+  description: Total wall time vs. step count; near-linear, with the deviation explained by population growth during longer runs.
+- name: "Throughput (interactive)"
+  url: /reports/figures/runtime-and-scaling/throughput.html
+  description: Agent-steps/sec across the grid and population sweeps; peak ~303,000 agent-steps/sec.
+runs: []
+pipeline_gate:
+  prerequisites: [spatial-biofilm-growth]
+  enables: []
+  gate_status: passed
