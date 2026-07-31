@@ -151,6 +151,27 @@ impl World {
                 let bio_rate = rxn.biomass_rate(a.mass, &concs); // pg/day
                 for &(k, coeff) in &rxn.yield_per_solute {
                     // consumption of solute k: coeff (negative) * biomass rate, per cell volume
+                    //
+                    // UNIT NOTE (documented, not fixed — see TODO below): the
+                    // internal unit system here is length=µm, mass=pg,
+                    // time=day, and solute fields are carried in g/m³. This
+                    // sink term is `-coeff * bio_rate / cell_vol`, i.e.
+                    // (dimensionless yield coeff) * pg/day / µm² (`cell_vol`
+                    // is a 2D µm² cell area, not a true µm³ volume), which
+                    // works out to pg/µm²/day, not the g/m³/day the solute
+                    // field expects. Converting pg/µm³ -> g/m³ requires a
+                    // 1e6 factor (1 pg/µm³ = 1e6 g/m³, since 1 µm³ = 1e-18 m³
+                    // and 1 pg = 1e-12 g), and there is currently a 2D-area
+                    // vs 3D-volume mismatch on top of that (cell_vol should
+                    // include the layer/unit depth if this is meant to model
+                    // a true volumetric concentration).
+                    // TODO(phase-b): reconcile this sink scaling (suspected
+                    // ~1e6 gap, plus the area-vs-volume question) against the
+                    // real iDynoMiCS-2 Java oracle once the biofilm-
+                    // equivalence study lands (Phase A validates only the
+                    // chemostat, which has no PDE/solute-sink path, so no
+                    // current test exercises this number). Do not change the
+                    // constant without a validating oracle comparison.
                     sinks[k][self.grid.idx(i, j)] += -coeff * bio_rate / cell_vol;
                 }
             }
