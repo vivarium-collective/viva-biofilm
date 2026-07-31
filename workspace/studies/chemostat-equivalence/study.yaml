@@ -1,0 +1,50 @@
+schema_version: 4
+name: chemostat-equivalence
+investigation: viva-biofilm-equivalence
+title: "Chemostat equivalence: viva-biofilm vs analytic decay and real iDynoMiCS-2"
+created: '2026-07-31'
+status: complete
+question: |
+  Does the viva-biofilm Rust ChemostatProcess reproduce iDynoMiCS-2's
+  ChemostatSolver (first-order solute1 decay) to within 1% of the analytic
+  solution 2·e^(−0.1t)?
+report:
+  title: Chemostat equivalence
+  verdict: pass
+  confidence: high
+  evidence_quality: analytic closed-form + optional real-engine oracle
+  objective: |
+    Validate the well-mixed ODE path before the spatial biofilm.
+  result: |
+    solute1(60d) matches 2·e^(−6)=0.00496 within <1%.
+  interpretation: |
+    The Heun integrator reproduces the ChemostatSolver decay; this anchors
+    the reaction/stoichiometry plumbing used by the biofilm engine.
+study_card:
+  phase: Simulate / Evaluate
+  one_liner: "Chemostat solute1 decay vs analytic (and real iDynoMiCS-2)."
+  status: complete
+  headline: "PASS — <1% vs analytic."
+conditions:
+  baseline:
+    composite: viva_biofilm.composites.chemostat.chemostat
+    params: {}
+  variants: []
+  model_settings:
+  - {name: heun-dt-0.1, detail: "Heun integrator, dt=0.1 day, 60 day horizon"}
+tests:
+- name: matches-analytic-within-1pct
+  classification: primary
+  status: passed
+  question: "Is final solute1 within 1% of 2·e^(−0.1·60)?"
+  measure: {kind: report_card_axis, card: workspace/studies/chemostat-equivalence/viz/report_card, group: chemostat-decay}
+  pass_if: {op: verdict_at_least, level: within_tol}
+visualizations:
+- name: solute1 decay
+  address: image:charts/decay.html
+  config: {title: "Chemostat equivalence", caption: "viva vs analytic vs iDynoMiCS-2"}
+runs: []
+pipeline_gate:
+  prerequisites: []
+  enables: [biofilm-equivalence]
+  gate_status: passed
