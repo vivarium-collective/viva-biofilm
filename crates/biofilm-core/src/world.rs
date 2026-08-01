@@ -48,6 +48,42 @@ const SECONDS_PER_DAY: f64 = 86_400.0;
 /// pg/µm³ -> g/m³ (1 µm³ = 1e-18 m³, 1 pg = 1e-12 g -> 1 pg/µm³ = 1e6 g/m³).
 const PG_PER_UM3_TO_G_PER_M3: f64 = 1.0e6;
 
+/// Safety cap on the per-macro-step sink<->solve Picard coupling loop (see
+/// `step`'s stage 1+2 note below). With the under-relaxation needed for
+/// stability (`COUPLING_RELAXATION`, see below), gentle kinetics converge in
+/// a handful of cheap inner iterations (empirically ~5-7, occasionally more
+/// on the very first step from a cold start) rather than in 1 — damping
+/// trades iteration count for actually reaching the self-consistent field.
+/// This constant bounds the cost of stiff/pathological kinetics that
+/// converge slowly (or, pre-`COUPLING_RELAXATION` tuning, not at all).
+const MAX_COUPLING_ITERS: usize = 20;
+/// Convergence threshold (g/m³) for the sink<->solve Picard loop: the max
+/// absolute per-cell concentration change between successive inner
+/// iterations must drop below this before the loop is considered converged.
+const COUPLING_TOL: f64 = 1.0e-3;
+/// Under-relaxation factor for the sink<->solve Picard update: each inner
+/// iterate blends `COUPLING_RELAXATION` of the freshly solved candidate
+/// field with `1 - COUPLING_RELAXATION` of the pre-solve field, rather than
+/// taking the full Picard step. Required for stability: under Table-K-stiff
+/// kinetics (steep Monod response, small Ks relative to bulk) the undamped
+/// map `C -> solve(sink(C))` has its own period-2 orbit (empirically
+/// verified) rather than converging. Note `max_delta` (the break-on-tol
+/// check below) measures the *damped* step size, i.e. `COUPLING_RELAXATION`
+/// times the underlying residual, so the effective tolerance on the
+/// residual scales with this factor too.
+///
+/// 0.5 is NOT enough damping: empirically (instrumented sweep, stiff test
+/// parameters) w=0.5 never breaks on `COUPLING_TOL` — every step rides the
+/// `MAX_COUPLING_ITERS` cap, landing on an arbitrary iterate of a
+/// (damped-but-still-cycling) limit cycle rather than the true
+/// self-consistent fixed point, and amplitude/population are erratic and
+/// close to the regression threshold as a result. 0.2 empirically converges
+/// for the stiff test (breaks on tol on the large majority of steps, ~10x
+/// fewer inner solves, oscillation amplitude ~8x under threshold, and
+/// physically-correct — not inflated — population). Values around 0.15-0.25
+/// were swept; 0.2 gives the best convergence margin.
+const COUPLING_RELAXATION: f64 = 0.2;
+
 /// Newborn agents placed by `spawn_distributed` start at
 /// `min(division_mass / 2, DISTRIBUTED_SEED_MASS_CAP)`. `spawn_agents` (the
 /// old single-species path) keeps its original, uncapped `division_mass / 2`
@@ -123,6 +159,28 @@ pub struct World {
     pde_tol: f64,
     pde_max_iter: usize,
     pde_omega: f64,
+
+    // ---- Coupling-loop diagnostics (Task 1) ------------------------------
+    //
+    // Set at the end of the most recent `step()` call's sink<->solve
+    // coupling loop (see `step`). Not part of the simulation state itself
+    // (doesn't affect determinism or results) — a lightweight introspection
+    // hook so callers/tests can confirm the loop is actually reaching
+    // self-consistency (`COUPLING_TOL`) rather than silently riding the
+    // `MAX_COUPLING_ITERS` safety cap every step, which would mean growth is
+    // reading an arbitrary non-converged iterate instead of the true
+    // self-consistent field.
+    last_coupling_converged: bool,
+    last_coupling_iters: usize,
+
+    // ---- Erosion detachment (Task 2) -------------------------------------
+    //
+    // Wanner-Gujer height-proportional surface erosion rate `k_det`
+    // (units 1/(µm*day)): see `detachment::erode_surface`, called from
+    // `step`. Default 0.0 is a strict no-op (see `erode_surface`'s guard),
+    // so every pre-Task-2 spec/test is unaffected unless a spec explicitly
+    // sets a rate via `set_detachment_rate`.
+    detachment_rate: f64,
 }
 
 impl Default for World {
@@ -152,6 +210,9 @@ impl World {
             pde_tol: 1e-4,
             pde_max_iter: 2_000,
             pde_omega: 1.8,
+            last_coupling_converged: false,
+            last_coupling_iters: 0,
+            detachment_rate: 0.0,
         }
     }
 
@@ -285,6 +346,14 @@ impl World {
         self.pde_omega = omega;
     }
 
+    /// Set the Wanner-Gujer surface-erosion rate `k_det` (units
+    /// 1/(µm*day)) used by `step`'s call to `detachment::erode_surface`.
+    /// `k_det <= 0.0` (the default) disables erosion entirely — see
+    /// `erode_surface`'s no-op guard.
+    pub fn set_detachment_rate(&mut self, k_det: f64) {
+        self.detachment_rate = k_det;
+    }
+
     /// Record intent to spawn `n` species-0 agents randomly placed within a
     /// band of height `band_height` above the substratum. Placement is
     /// deferred to `finalize(seed)` for reproducibility. Unchanged from
@@ -368,13 +437,13 @@ impl World {
 
     // ---- Simulation step -----------------------------------------------
 
-    pub fn step(&mut self, dt: f64) {
-        let ncell = self.grid.nx * self.grid.ny;
-        // 1. accumulate per-cell sink for each solute (g/m³/day); each agent
-        //    consumes/produces according to its OWN species' reactions, but
-        //    every agent's contribution lands in the same shared sink array
-        //    (one substrate field, however many strategies are competing for
-        //    it).
+    /// Accumulate the per-cell, per-solute sink (g/m³/day) from the CURRENT
+    /// solute field: each agent consumes/produces according to its OWN
+    /// species' reactions, but every agent's contribution lands in the same
+    /// shared sink array (one substrate field, however many strategies are
+    /// competing for it). Iterates `self.agents` in order (deterministic).
+    /// Called once per inner Picard iteration in `step` (see its comment).
+    fn build_sinks(&self, ncell: usize) -> Vec<Vec<f64>> {
         let mut sinks: Vec<Vec<f64>> = self.solutes.iter().map(|_| vec![0.0; ncell]).collect();
         let cell_vol = self.grid.dx * self.grid.dx; // µm² (2D, unit depth)
         for a in &self.agents {
@@ -396,17 +465,85 @@ impl World {
                 }
             }
         }
-        // 2. solve each solute field to steady state (unchanged)
-        for (k, f) in self.solutes.iter_mut().enumerate() {
-            crate::grid::solve_steady_state(
-                f,
-                &self.grid,
-                &sinks[k],
-                f.bulk,
-                self.pde_omega,
-                self.pde_tol,
-                self.pde_max_iter,
-            );
+        sinks
+    }
+
+    pub fn step(&mut self, dt: f64) {
+        let ncell = self.grid.nx * self.grid.ny;
+        // 1+2. Iterate sink<->solve to self-consistency (damped Picard fixed
+        //    point) before growth reads the field. Each inner pass rebuilds
+        //    the per-cell sink from the CURRENT solute field (same per-agent
+        //    Monod sink math as before, factored into `build_sinks`), solves
+        //    each solute to steady state (warm-started from the running
+        //    field, as before), then blends the solved candidate back toward
+        //    the pre-solve field by `COUPLING_RELAXATION`. Recomputing the
+        //    sink once and solving once — reading last step's leftover field
+        //    — lags sink and field one macro-step apart; under stiff
+        //    kinetics that lag forms a period-2 oxygen limit cycle that
+        //    defeats Monod substrate limitation (see the Task-1 coupling
+        //    brief). Plain (undamped) Picard iteration does not fix this on
+        //    its own: under Table-K-stiff kinetics the sink is a steep
+        //    function of concentration (Ks small relative to bulk), so the
+        //    undamped map `C -> solve(sink(C))` itself has a period-2 orbit
+        //    (verified empirically: sink swings ~1e3 vs ~1e6 g/m^3/day every
+        //    other inner iteration, never damping, exhausting
+        //    MAX_COUPLING_ITERS every step) — it just moves the same
+        //    oscillation one level in, and because MAX_COUPLING_ITERS is
+        //    even the loop always exits on the "replenished" (unconstrained)
+        //    phase, making the runaway *worse* than the original bug (every
+        //    step gets an unconstrained growth pulse instead of every other
+        //    step). Under-relaxing the update — standard for Picard/
+        //    successive-substitution iteration on strongly nonlinear
+        //    reactive feedback — damps that orbit. At `COUPLING_RELAXATION =
+        //    0.2` this genuinely converges within `MAX_COUPLING_ITERS` for
+        //    the stiff regime (empirically: the large majority of macro-
+        //    steps break on `COUPLING_TOL` well before the cap — see
+        //    `last_coupling_converged`/`last_coupling_iters` and
+        //    `tests/coupling_stability.rs`, which asserts this directly).
+        //    A weaker factor (0.5) was tried first and does NOT converge —
+        //    every step rode the iteration cap, reading an arbitrary iterate
+        //    of a still-cycling limit cycle rather than the true
+        //    self-consistent field. `C_{k+1} = C_k + COUPLING_RELAXATION *
+        //    (solve(sink(C_k)) - C_k)`, capped at `MAX_COUPLING_ITERS`,
+        //    converged when the max per-cell change drops below
+        //    `COUPLING_TOL`. Damping changes only the convergence path, not
+        //    the fixed point itself, so gentle kinetics (which already have
+        //    a stable, fast-converging map) still converge in a handful of
+        //    cheap inner iterations to the same physical answer.
+        let mut prev_conc: Vec<Vec<f64>> = self.solutes.iter().map(|f| f.conc.clone()).collect();
+        self.last_coupling_converged = false;
+        self.last_coupling_iters = MAX_COUPLING_ITERS;
+        for _coupling_iter in 0..MAX_COUPLING_ITERS {
+            let sinks = self.build_sinks(ncell);
+            for (k, f) in self.solutes.iter_mut().enumerate() {
+                crate::grid::solve_steady_state(
+                    f,
+                    &self.grid,
+                    &sinks[k],
+                    f.bulk,
+                    self.pde_omega,
+                    self.pde_tol,
+                    self.pde_max_iter,
+                );
+                for c in 0..ncell {
+                    f.conc[c] = prev_conc[k][c] + COUPLING_RELAXATION * (f.conc[c] - prev_conc[k][c]);
+                }
+            }
+            let mut max_delta: f64 = 0.0;
+            for (k, f) in self.solutes.iter().enumerate() {
+                for c in 0..ncell {
+                    let d = (f.conc[c] - prev_conc[k][c]).abs();
+                    if d > max_delta {
+                        max_delta = d;
+                    }
+                }
+                prev_conc[k].copy_from_slice(&f.conc);
+            }
+            if max_delta < COUPLING_TOL {
+                self.last_coupling_converged = true;
+                self.last_coupling_iters = _coupling_iter + 1;
+                break;
+            }
         }
         // 3. grow agents at their local concentrations, by their own species'
         //    reactions (this is where Rate- vs Yield-Strategist divergence
@@ -455,6 +592,21 @@ impl World {
         let domain_x = self.grid.nx as f64 * self.grid.dx;
         let shove_density = self.species.first().map(|s| s.density).unwrap_or(0.15);
         crate::relaxation::relax(&mut self.agents, shove_density, domain_x, 30, 0.5);
+        // Rate-based surface erosion (Task 2): per-column Wanner-Gujer
+        // recession, `bin_width = grid.dx` so erosion columns line up with
+        // the reaction-diffusion grid's own columns. No-op when
+        // `detachment_rate <= 0.0` (the default). Runs BEFORE the
+        // `detach_above_height` domain-ceiling clip, which stays as a hard
+        // safety bound so nothing can ever exceed the PDE domain regardless
+        // of erosion configuration.
+        crate::detachment::erode_surface(
+            &mut self.agents,
+            self.detachment_rate,
+            dt,
+            self.grid.dx,
+            domain_x,
+            shove_density,
+        );
         let max_h = self.grid.ny as f64 * self.grid.dx;
         crate::detachment::detach_above_height(&mut self.agents, max_h);
         self.time += dt;
@@ -477,6 +629,22 @@ impl World {
     }
 
     // ---- Readback accessors ---------------------------------------------
+
+    /// Whether the most recent `step()` call's sink<->solve coupling loop
+    /// broke on `COUPLING_TOL` (true self-consistency reached) rather than
+    /// exhausting `MAX_COUPLING_ITERS` (false — growth read a non-converged,
+    /// arbitrary iterate). See the coupling-loop diagnostics note on
+    /// `World`'s fields and `tests/coupling_stability.rs`.
+    pub fn last_coupling_converged(&self) -> bool {
+        self.last_coupling_converged
+    }
+
+    /// Number of inner Picard iterations the most recent `step()` call's
+    /// coupling loop took (1..=`MAX_COUPLING_ITERS`; equals
+    /// `MAX_COUPLING_ITERS` when it did not converge).
+    pub fn last_coupling_iters(&self) -> usize {
+        self.last_coupling_iters
+    }
 
     pub fn population(&self) -> usize {
         self.agents.len()

@@ -15,6 +15,14 @@ BIOFILM_SPEC = {
     "species": {"density": 0.15, "division_mass": 0.2},
     "spawn": {"n": 30, "band_height": 1.0, "seed_offset": 0},
     "seed": 1234,
+    # Wanner-Gujer surface erosion rate (Task 2), units 1/(um*day). Without
+    # this, Task 1's fix (substrate limitation genuinely biting -> linear,
+    # not exponential, growth) still leaves thickness growing unboundedly
+    # (a surface active layer marching upward forever). Calibrated by sweep
+    # at this spec's kinetics/dt=0.05: k_det=0.01 plateaus biofilm_thickness
+    # in the ~30-35um range by ~t=15-20 days (see
+    # .superpowers/sdd/substrate-limitation/task2-erosion-report.md).
+    "detachment_rate": 0.01,
 }
 
 
@@ -134,6 +142,20 @@ def competition_spec(
             {**ys_params, "spawn_n": n_each, "seed_offset": 1},
         ],
         "seed": seed,
+        # Wanner-Gujer surface erosion rate (Task 2), units 1/(um*day).
+        # Same balance used for BIOFILM_SPEC (erosion engages once
+        # Delta = k_det*h^2*dt approaches an agent's own radius r; RS/YS
+        # r ~ 0.35-0.43um at this dt=1/24) predicts a threshold around
+        # k_det ~ 0.013-0.02. Confirmed empirically on a reduced-domain
+        # proxy (same species/dt, smaller nx/ny for tractable runtime):
+        # k_det=0.013 showed no measurable effect through day 37.5
+        # (right at threshold), k_det=0.02 measurably suppressed thickness
+        # by day 37.5 (21.0um vs 23.0um no-erosion control) and was still
+        # trending flatter — see task2-erosion-report.md for the full
+        # numbers and the caveat that a full multi-week plateau (as opposed
+        # to this trend) was not confirmed at the PRODUCTION nx=128,ny=64
+        # domain due to runtime cost.
+        "detachment_rate": 0.02,
     }
 
 

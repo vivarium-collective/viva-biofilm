@@ -108,6 +108,12 @@ impl World {
         Ok(())
     }
 
+    /// Set the Wanner-Gujer surface-erosion rate `k_det` (1/(µm*day)).
+    /// `k_det <= 0.0` (the default) disables erosion entirely.
+    fn set_detachment_rate(&mut self, k_det: f64) {
+        self.inner.set_detachment_rate(k_det);
+    }
+
     fn spawn_agents(&mut self, n: usize, band_height: f64, seed_offset: u64) {
         self.inner.spawn_agents(n, band_height, seed_offset);
     }

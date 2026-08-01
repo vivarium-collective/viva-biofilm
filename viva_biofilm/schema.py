@@ -4,6 +4,7 @@ def load_world(spec: dict):
     w = biofilm_core.World()
     d = spec["domain"]
     w.set_domain(d["nx"], d["ny"], d["dx"], d["layer_thickness"])
+    w.set_detachment_rate(spec.get("detachment_rate", 0.0))
     index = {}
     for s in spec["solutes"]:
         index[s["name"]] = w.add_solute(
