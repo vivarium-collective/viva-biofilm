@@ -69,9 +69,20 @@ narrative:
     runtime budget for this study. We report a genuinely shortened 4.0-day
     (96-step) horizon instead, with the paper's dt (1 hour) and all
     Table-K parameter values UNCHANGED -- only the observation window is
-    shorter. This is the leading candidate explanation for why we see RS
-    dominant-but-declining rather than the paper's full flip: the dynamics
-    may not yet have played out.
+    shorter. UPDATE (fuller-horizon test): after an O(n) neighbor-grid
+    relaxation made longer runs tractable, we ran n_each=50 out to ~7.5 days
+    and the horizon hypothesis was DISPROVED -- the RS biomass fraction climbs
+    monotonically (0.573, 0.684, 0.787, 0.862, 0.914, 0.946 at days
+    1.2/2.5/3.8/5.0/6.2/7.5), i.e. RS runs *further* away rather than flipping
+    to YS. So the missing flip is NOT a horizon artifact. Two model gaps
+    explain it: (1) growth is not realistically substrate-limited at this
+    density -- the population grows near-unbounded (~218k agents by day 7.5 in
+    a 200 um domain), so oxygen never becomes limiting and YS's higher yield
+    never confers an advantage; and (2) this engine lacks the force-based
+    mechanics (FbM) + spatial surface-escape dynamics the paper's YS-win
+    depends on. Reproducing the flip requires those (the Fig 6 / FbM
+    machinery) plus realistic substrate-limitation/detachment -- not more
+    simulated days.
   - |
     Substrate: only oxygen is modeled (single limiting solute), matching
     Kreft 2004 / the paper's simplification for this figure.
