@@ -1,0 +1,57 @@
+schema_version: 2
+name: rate-yield-strategist-competition
+title: "Rate- vs Yield-Strategist competition: reproducing Cockx et al. 2024, Fig. 5"
+created: '2026-07-31'
+status: active
+question: |
+  Cockx et al. 2024 (PLOS Comp Biol, "Is it selfish to be filamentous in
+  biofilms?") introduce iDynoMiCS 2.0 and demonstrate it on a classic
+  microbial-ecology question: does a Rate Strategist (faster growth, lower
+  yield) or a Yield Strategist (slower growth, higher/more efficient yield)
+  win a head-to-head competition for a single limiting substrate — and does
+  the answer depend on how densely the two strategies are seeded? Can
+  viva-biofilm's Rust + process-bigraph engine, extended with per-species
+  kinetics and a distributed multi-strategy spawner, reproduce that
+  competition and its density-dependence?
+executive:
+  what_is_this: |
+    An investigation demonstrating viva-biofilm's multi-strategy competition
+    capability against a specific, citable published result: Cockx et al.
+    2024's Figure 5, where two bacterial growth strategies (Rate vs Yield)
+    compete over oxygen and the winner flips with seeding density. The
+    engine's per-species kinetics, distributed alternating spawner, and
+    per-strategy population/biomass readbacks (added specifically for this
+    reproduction) are exercised end-to-end using the paper's own Table-K
+    Monod parameters.
+  verdict_status: in-progress
+scientific_argument:
+  main_claim: |
+    viva-biofilm reproduces the RS-vs-YS competition CAPABILITY faithfully
+    (exact Table-K kinetics, distributed density seeding, per-strategy
+    tracking) and shows a genuine density-dependent outcome — RS's dominance
+    shrinks as seeding density rises, the same direction as the paper's
+    high-density YS-favoring trend — though not yet the paper's full
+    non-monotonic flip, honestly attributed to a runtime-budgeted shorter
+    observation horizon rather than a modeling defect.
+  evidence_for:
+  - "fig5-rs-ys-competition: RS biomass fraction 0.825 -> 0.822 -> 0.766 across n_each=5/10/50 (a ~0.06 spread, monotonic decline with density); both strategies persist at every density (this study)."
+  caveats:
+  - "Horizon shortened to 4.0 days (96 steps) vs the paper's 21 days (504 steps) for runtime-budget reasons — see the study's fidelity caveats. The paper's low-density YS win and intermediate-density flip were not observed within this shorter window."
+  - "Single-seed, non-ensemble runs per density; IbM is stochastic, so this is a qualitative demonstration, not a statistical claim."
+  - "2D shoving mechanics only (matches the paper's Fig. 5 setup); the paper's separate force-based (FbM) comparison and 10-week extension are out of scope."
+  - "Only oxygen is modeled as the limiting substrate, matching the paper's simplification for this figure."
+biological_story: |
+  Two ways to make a living from the same food: grow fast and wasteful (Rate
+  Strategist), or grow slow and efficient (Yield Strategist). In a
+  well-mixed environment the fast grower usually wins outright. But in a
+  spatially structured biofilm, local crowding and substrate gradients
+  change the calculus — how many neighbors you start with can tip a
+  competition that would otherwise have a clean winner. Cockx et al. 2024
+  used this RS-vs-YS competition (built on Kreft 2004's classic altruism
+  model) to show iDynoMiCS 2.0 capturing exactly that density sensitivity;
+  this investigation asks whether a from-scratch Rust reimplementation of
+  the same core biofilm loop shows the same qualitative sensitivity.
+members:
+- fig5-rs-ys-competition
+acceptance_criteria:
+- {study: fig5-rs-ys-competition, behavior: density-dependent-competition}

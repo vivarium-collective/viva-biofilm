@@ -79,7 +79,9 @@ def _snapshot(w) -> dict:
 # pg). Rate Strategist: higher mu_max, lower yield. Yield Strategist: lower
 # mu_max, higher (more efficient) yield. Consistency check baked into the
 # numbers: RS mu_max is exactly 2x YS mu_max; RS yield coeff is exactly half
-# YS's; both share the same specific affinity mu_max/Kox = 0.274; RS
+# YS's; RS and YS share the same specific affinity by construction (each
+# strategy's mu_max/Kox ratio is equal — 6.566 in these day-unit numbers, the
+# engine-unit counterpart of the paper's 0.274 hourly-unit figure); RS
 # consumes 2x the oxygen per unit biomass that YS does.
 RATE_STRATEGIST = {
     "name": "RS",

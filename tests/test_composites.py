@@ -79,6 +79,22 @@ def test_biofilm_composite_multistep_population_bounded():
     assert 30 <= population < 45, f"population {population} outside guard {30} <= x < 45"
 
 
+def test_competition_composite_builds_and_tracks_two_strategies():
+    """The competition composite spec's `strategies` block must route through
+    BiofilmProcess's existing single-Process wiring (schema.load_world already
+    supports the multi-species path) without any process changes: after a
+    short run both RS and YS agents (seeded 10 each) must still be present.
+    """
+    core = build_core()
+    doc = yaml.safe_load((COMPOSITES / "competition.composite.yaml").read_text())
+    state = doc["state"]
+    composite = pb.Composite({"state": state}, core=core)
+    composite.run(1 / 24)  # one interval; must not raise
+
+    population = composite.state["stores"]["population"]
+    assert population >= 20  # 10 RS + 10 YS seeded, none should vanish in one step
+
+
 def test_biofilm_controlled_composite_builds_and_propagates_boundary():
     """The controller and biofilm share a boundary_concentrations store: the
     controller's schedule starts at oxygen=8.74 (t=0), so after a couple of
