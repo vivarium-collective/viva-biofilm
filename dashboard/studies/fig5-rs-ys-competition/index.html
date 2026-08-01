@@ -345,7 +345,7 @@ competition outcome, and in what direction?
           </select></label>
         <label class="tag-control"><span class="tag-k">evidence</span>
           <input type="text" class="narrative-input tag-input" data-narrative-path="report.evidence_quality"
-                 value="deterministic single-seed runs per density (3 densities, no statistical ensemble; shortened horizon, see caveat below)" placeholder="calibrated | literature-matched | …"></label>
+                 value="deterministic single-seed runs per density (3 densities, no statistical ensemble; the paper&#39;s FULL 21-day / 504-step horizon)" placeholder="calibrated | literature-matched | …"></label>
       </div>
     </div>
 
@@ -379,9 +379,9 @@ competition outcome, and in what direction?
         
         
         <p style="margin:0">
-          <strong>2</strong> tests defined —
+          <strong>3</strong> tests defined —
             <span class="classification-pill classification-primary">1 primary</span>
-            <span class="classification-pill classification-supporting">1 supporting</span>
+            <span class="classification-pill classification-supporting">2 supporting</span>
           <a onclick="_setStudyTab('tests')" style="cursor:pointer;color:#3b82f6;text-decoration:underline;margin-left:6px">View on Tests tab →</a>
         </p>
       </div>
@@ -498,7 +498,7 @@ competition outcome, and in what direction?
     <div class="cond-block">
       
       <div class="cond-block-title">
-        Model settings <span class="muted" style="font-weight:normal;font-size:0.85em">(3)</span>
+        Model settings <span class="muted" style="font-weight:normal;font-size:0.85em">(4)</span>
         
       </div>
       <p class="muted" style="font-size:0.85em;margin:0 0 6px 0">Edit a value in the Current column and click <strong>Save</strong>. The next <code>pbg_runner</code> invocation for this study reads the updated value from <code>study.yaml</code>.</p>
@@ -567,8 +567,8 @@ competition outcome, and in what direction?
           
           
           
-          <tr data-ei-name="shortened-horizon">
-            <td title=""><code>shortened-horizon</code></td>
+          <tr data-ei-name="full-horizon">
+            <td title=""><code>full-horizon</code></td>
             <td></td>
             <td><code></code></td>
             <td>
@@ -588,7 +588,36 @@ competition outcome, and in what direction?
             </td>
             <td>
               <button class="action-btn cond-ei-save" type="button"
-                      onclick="_saveExpertInput('fig5-rs-ys-competition', 'shortened-horizon', this)">Save</button>
+                      onclick="_saveExpertInput('fig5-rs-ys-competition', 'full-horizon', this)">Save</button>
+              <span class="cond-ei-flash" style="display:none;margin-left:6px;font-size:0.85em"></span>
+            </td>
+          </tr>
+          
+          
+          
+          
+          <tr data-ei-name="detachment">
+            <td title=""><code>detachment</code></td>
+            <td></td>
+            <td><code></code></td>
+            <td>
+              <input class="cond-ei-input"
+                     type="text"
+                     value=""
+                     placeholder="(awaiting expert)"
+                     
+                     step="any"
+                     style="width:100%;padding:3px 6px;border:1px solid #cbd5e1;border-radius:3px;font:inherit">
+            </td>
+            <td>
+              <em class="muted">—</em>
+            </td>
+            <td>
+              <span class="cond-ei-gate-opt">optional</span>
+            </td>
+            <td>
+              <button class="action-btn cond-ei-save" type="button"
+                      onclick="_saveExpertInput('fig5-rs-ys-competition', 'detachment', this)">Save</button>
               <span class="cond-ei-flash" style="display:none;margin-left:6px;font-size:0.85em"></span>
             </td>
           </tr>
@@ -662,7 +691,7 @@ competition outcome, and in what direction?
     </p>
     <p style="margin:4px 0;font-size:0.86em" class="muted">
       
-      <strong>Tests applied:</strong> 2 · 
+      <strong>Tests applied:</strong> 3 · 
       
     </p>
     
@@ -901,6 +930,42 @@ expect:  {"level": "within_tol", "op": "verdict_at_least"}</pre>
     
     
     
+    <li class="expected-behavior-item" id="bt-density-changes-the-winner"
+        data-test-kind="behavioral"
+        
+        data-pytest-node="density-changes-the-winner"
+        data-classification="supporting"
+        data-result="pending"
+        style="margin: 0 0 10px 0; padding: 10px 12px; border-left: 4px solid #3b82f6; background: #f8fafc; border-radius: 4px;">
+      
+        
+      <div style="display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;">
+        <span class="bt-result" style="font-size: 0.75em; font-family: monospace; padding: 2px 8px; border-radius: 9999px; background: #f1f5f9; color: #475569">⏳ pending</span>
+        <span class="classification-pill classification-supporting">supporting</span>
+        <strong style="font-size: 0.9em;">density-changes-the-winner</strong>
+        
+      </div>
+      <div style="margin-top: 6px; font-size: 0.95em;">Over the full 21-day horizon, does seeding density change WHICH strategy wins (the paper&#39;s core finding)?</div>
+      
+      
+      <details style="margin-top: 6px; font-size: 0.82em;">
+        <summary class="muted" style="cursor: pointer;">Assertion</summary>
+        <pre style="background:#fff; padding:8px; margin:4px 0 0 0; border:1px solid #e2e8f0; border-radius:3px; overflow-x:auto;">measure: {"card": "workspace/studies/fig5-rs-ys-competition/viz/report_card", "group": "winner-reversal", "kind": "report_card_axis"}
+expect:  {"level": "within_tol", "op": "verdict_at_least"}</pre>
+      </details>
+      
+      
+      
+      
+    </li>
+    
+    
+    
+    
+    
+    
+    
+    
     <li class="expected-behavior-item" id="bt-paper-flip-fidelity"
         data-test-kind="behavioral"
         
@@ -916,12 +981,12 @@ expect:  {"level": "within_tol", "op": "verdict_at_least"}</pre>
         <strong style="font-size: 0.9em;">paper-flip-fidelity</strong>
         
       </div>
-      <div style="margin-top: 6px; font-size: 0.95em;">Does the density trend reproduce the paper&#39;s exact non-monotonic RS/YS flip (YS low, RS intermediate, YS high)?</div>
+      <div style="margin-top: 6px; font-size: 0.95em;">Does the density trend reproduce the paper&#39;s EXACT non-monotonic RS/YS flip (YS low, RS intermediate, YS high)?</div>
       
       
       <details style="margin-top: 6px; font-size: 0.82em;">
         <summary class="muted" style="cursor: pointer;">Assertion</summary>
-        <pre style="background:#fff; padding:8px; margin:4px 0 0 0; border:1px solid #e2e8f0; border-radius:3px; overflow-x:auto;">measure: {"card": "workspace/studies/fig5-rs-ys-competition/viz/report_card", "group": "paper-fidelity", "kind": "report_card_axis"}
+        <pre style="background:#fff; padding:8px; margin:4px 0 0 0; border:1px solid #e2e8f0; border-radius:3px; overflow-x:auto;">measure: {"card": "workspace/studies/fig5-rs-ys-competition/viz/report_card", "group": "exact-flip", "kind": "report_card_axis"}
 expect:  {"level": "within_tol", "op": "verdict_at_least"}</pre>
       </details>
       
@@ -1048,7 +1113,7 @@ expect:  {"level": "within_tol", "op": "verdict_at_least"}</pre>
 </section>
 
 </main>
-<script>window.__DASH_CONFIG__ = { mode: "snapshot", interactiveUrl: "https://github.com/vivarium-collective/viva-biofilm", basePath: "/viva-biofilm/dashboard", inputsDownloadBase: "https://github.com/vivarium-collective/viva-biofilm/raw/main", provenance: {"repo_slug": "vivarium-collective/viva-biofilm", "repo_url": "https://github.com/vivarium-collective/viva-biofilm", "commit": "b010e1478434e0afc6ddf242d3f47fd9e523a48f", "commit_url": "https://github.com/vivarium-collective/viva-biofilm/commit/b010e1478434e0afc6ddf242d3f47fd9e523a48f", "branch": "main", "generated_at": "2026-08-01 02:45 UTC"} };</script>
+<script>window.__DASH_CONFIG__ = { mode: "snapshot", interactiveUrl: "https://github.com/vivarium-collective/viva-biofilm", basePath: "/viva-biofilm/dashboard", inputsDownloadBase: "https://github.com/vivarium-collective/viva-biofilm/raw/main", provenance: {"repo_slug": "vivarium-collective/viva-biofilm", "repo_url": "https://github.com/vivarium-collective/viva-biofilm", "commit": "4aa44c1b0c9387bf0481f7a3fb1fa64816ce0727", "commit_url": "https://github.com/vivarium-collective/viva-biofilm/commit/4aa44c1b0c9387bf0481f7a3fb1fa64816ce0727", "branch": "main", "generated_at": "2026-08-01 05:09 UTC"} };</script>
 <script src="/viva-biofilm/dashboard/assets/data-source.js"></script>
 <script>
 window._studyName = "fig5-rs-ys-competition";

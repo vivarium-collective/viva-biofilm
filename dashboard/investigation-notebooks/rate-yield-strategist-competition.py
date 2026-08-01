@@ -201,4 +201,5 @@ _save_viz('fig5-rs-ys-competition', 'RS_fraction_over_time', _render_one('image:
 # | test | measures | passes if |
 # | --- | --- | --- |
 # | density-dependent-competition | kind=report_card_axis card=workspace/studies/fig5-rs-ys-competition/viz/report_card group=competition | op verdict_at_least level within_tol |
-# | paper-flip-fidelity | kind=report_card_axis card=workspace/studies/fig5-rs-ys-competition/viz/report_card group=paper-fidelity | op verdict_at_least level within_tol |
+# | density-changes-the-winner | kind=report_card_axis card=workspace/studies/fig5-rs-ys-competition/viz/report_card group=winner-reversal | op verdict_at_least level within_tol |
+# | paper-flip-fidelity | kind=report_card_axis card=workspace/studies/fig5-rs-ys-competition/viz/report_card group=exact-flip | op verdict_at_least level within_tol |
