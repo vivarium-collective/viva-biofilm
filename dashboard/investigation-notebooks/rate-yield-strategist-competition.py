@@ -152,9 +152,9 @@ def describe_spec(spec):
 #
 # | simulation | composite | steps | params |
 # | --- | --- | --- | --- |
-# | `fig5-rs-ys-competition` | `fig5-rs-ys-competition` | 22 | — |
-# | `fig5-rs-ys-competition` | `fig5-rs-ys-competition` | 22 | — |
-# | `fig5-rs-ys-competition` | `fig5-rs-ys-competition` | 22 | — |
+# | `fig5-rs-ys-competition-n_each_10` | `fig5-rs-ys-competition` | 22 | — |
+# | `fig5-rs-ys-competition-n_each_5` | `fig5-rs-ys-competition` | 22 | — |
+# | `fig5-rs-ys-competition-n_each_50` | `fig5-rs-ys-competition` | 22 | — |
 
 # ### Specification (process-bigraph) — load, inspect, edit
 #
@@ -179,23 +179,23 @@ RUNS_DB = str(STUDY_DIR / "runs.db")
 # Runtime knobs — edit freely. STEPS = number of composite steps;
 # INTERVAL = global dt filling ${interval} placeholders (a per-process
 # interval pinned in the edit cell above takes precedence).
-STEPS_fig5_rs_ys_competition = 22
-INTERVAL_fig5_rs_ys_competition = 0.1
-STEPS_fig5_rs_ys_competition = 22
-INTERVAL_fig5_rs_ys_competition = 0.1
-STEPS_fig5_rs_ys_competition = 22
-INTERVAL_fig5_rs_ys_competition = 0.1
+STEPS_fig5_rs_ys_competition_n_each_10 = 22
+INTERVAL_fig5_rs_ys_competition_n_each_10 = 0.1
+STEPS_fig5_rs_ys_competition_n_each_5 = 22
+INTERVAL_fig5_rs_ys_competition_n_each_5 = 0.1
+STEPS_fig5_rs_ys_competition_n_each_50 = 22
+INTERVAL_fig5_rs_ys_competition_n_each_50 = 0.1
 
 if RERUN:
     with quiet():  # the sim prints per-step progress; keep it out of the notebook
         # Generic process-bigraph protocol (no workspace runner detected):
         from viva_superpowers.composite_spec import build_composite_from_spec
-        comp = build_composite_from_spec(spec_fig5_rs_ys_competition, {'interval': INTERVAL_fig5_rs_ys_competition}, core=core)
-        comp.run(STEPS_fig5_rs_ys_competition)  # writes the composite's declared emitter
-        comp = build_composite_from_spec(spec_fig5_rs_ys_competition, {'interval': INTERVAL_fig5_rs_ys_competition}, core=core)
-        comp.run(STEPS_fig5_rs_ys_competition)  # writes the composite's declared emitter
-        comp = build_composite_from_spec(spec_fig5_rs_ys_competition, {'interval': INTERVAL_fig5_rs_ys_competition}, core=core)
-        comp.run(STEPS_fig5_rs_ys_competition)  # writes the composite's declared emitter
+        comp = build_composite_from_spec(spec_fig5_rs_ys_competition, {'interval': INTERVAL_fig5_rs_ys_competition_n_each_10}, core=core)
+        comp.run(STEPS_fig5_rs_ys_competition_n_each_10)  # writes the composite's declared emitter
+        comp = build_composite_from_spec(spec_fig5_rs_ys_competition, {'interval': INTERVAL_fig5_rs_ys_competition_n_each_5}, core=core)
+        comp.run(STEPS_fig5_rs_ys_competition_n_each_5)  # writes the composite's declared emitter
+        comp = build_composite_from_spec(spec_fig5_rs_ys_competition, {'interval': INTERVAL_fig5_rs_ys_competition_n_each_50}, core=core)
+        comp.run(STEPS_fig5_rs_ys_competition_n_each_50)  # writes the composite's declared emitter
     print(f'ran 3 simulation(s) -> {RUNS_DB}')
 else:
     print("RERUN=False — rendering committed", RUNS_DB)
