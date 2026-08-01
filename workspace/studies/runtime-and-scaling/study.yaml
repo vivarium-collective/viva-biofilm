@@ -56,7 +56,8 @@ study_card:
   phase: Simulate / Evaluate
   one_liner: "Well-behaved sub-quadratic grid/population scaling + near-linear duration (R^2=0.987), peak ~6e4 agent-steps/sec; per-step cost reflects the converged reaction-diffusion coupling, a net win on realistic (population-bounding) workloads."
   status: complete
-  headline: "PASS — well-scaling; per-step cost is the converged-coupling correctness trade, a large net win at realistic scale."
+  reproduces: "viva-native capability (engine performance/scaling) — not a paper-figure reproduction"
+  headline: "viva capability (no paper figure). — PASS: well-scaling; per-step cost is the converged-coupling correctness trade, a large net win at realistic scale."
 conditions:
   baseline:
     composite: viva_biofilm.composites.biofilm.biofilm

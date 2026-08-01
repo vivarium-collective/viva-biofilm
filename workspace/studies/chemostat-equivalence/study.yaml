@@ -24,7 +24,8 @@ study_card:
   phase: Simulate / Evaluate
   one_liner: "Chemostat solute1 decay vs analytic (and real iDynoMiCS-2)."
   status: complete
-  headline: "PASS — <1% vs analytic."
+  reproduces: "Equivalence check (analytic first-order decay + chemostat protocol) — not a paper figure"
+  headline: "Equivalence check (analytic decay; no paper figure). — PASS: <1% vs analytic."
 conditions:
   baseline:
     composite: viva_biofilm.composites.chemostat.chemostat

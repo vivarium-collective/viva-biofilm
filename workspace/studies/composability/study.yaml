@@ -42,7 +42,8 @@ study_card:
   phase: Simulate / Evaluate
   one_liner: "Controller-driven oxygen dip -> 60 vs 120 final agents (control); biomass ratio 0.577."
   status: complete
-  headline: "PASS — controller drove the boundary exactly, biofilm growth visibly responded."
+  reproduces: "viva-native capability (runtime process control) — not a paper-figure reproduction"
+  headline: "viva capability (no paper figure). — PASS: controller drove the boundary exactly, biofilm growth visibly responded."
 conditions:
   baseline:
     composite: viva_biofilm.composites.biofilm_controlled.biofilm_controlled

@@ -39,7 +39,14 @@ DT = 1 / 24        # paper's Delta-t = 1 hour (unchanged)
 N_STEPS = 504      # 21.0 days -- the paper's FULL horizon (504 steps at dt=1/24 d); see docstring.
 SNAPSHOT_EVERY = 24  # 1.0 day resolution for the time-series chart
 
-CHART_STEMS = ["outcome_vs_density", "colony_density5", "colony_density50", "fraction_over_time"]
+CHART_STEMS = ["outcome_vs_density", "colony_density5", "colony_density10",
+               "colony_density50", "fraction_over_time"]
+
+# Representative interior x-window (µm) for the paper-style colony panels: at
+# true aspect the full 200-µm-wide, ~15-µm-tall biofilm is an unreadable strip,
+# so we crop to a ~60 µm slice (as Cockx et al. 2024 Fig. 5 does) to show the
+# vertical strategy segregation over the oxygen gradient.
+COLONY_WINDOW = (20.0, 80.0)
 
 # Density-line colors for the time-series chart: low density closer to RS's
 # blue, high density closer to YS's red, echoing the outcome-figure palette.
@@ -237,18 +244,19 @@ def main() -> None:
     outcomes = [{"n_each": n, "rs_fraction": rs_fraction(runs[n][-1])} for n in DENSITIES]
 
     _save(viz.competition_outcome_figure(outcomes), "outcome_vs_density")
-    _save(
-        viz.strategy_colony_figure(
-            runs[5][-1], title=f"Final colony, n_each=5 (t={runs[5][-1]['time']:.1f}d)"
-        ),
-        "colony_density5",
-    )
-    _save(
-        viz.strategy_colony_figure(
-            runs[50][-1], title=f"Final colony, n_each=50 (t={runs[50][-1]['time']:.1f}d)"
-        ),
-        "colony_density50",
-    )
+    for n in DENSITIES:
+        snap = runs[n][-1]
+        winner = "YS" if rs_fraction(snap) < 0.5 else "RS"
+        _save(
+            viz.strategy_colony_figure(
+                snap,
+                title=(f"Cockx 2024 Fig. 5 — colony at n_each={n} "
+                       f"(t={snap['time']:.0f}d, RS frac {rs_fraction(snap):.2f}, {winner} ahead)"),
+                show_solute="oxygen",
+                x_window=COLONY_WINDOW,
+            ),
+            f"colony_density{n}",
+        )
     _save(fraction_over_time_figure(runs), "fraction_over_time")
 
     # Mirror the charts into reports/figures/<study>/ for study.yaml's

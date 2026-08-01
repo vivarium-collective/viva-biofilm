@@ -58,7 +58,8 @@ study_card:
   phase: Simulate / Evaluate
   one_liner: "Over the full 21-day horizon the winner reverses with density: YS wins at low density (RS 0.382), RS at intermediate/high (0.539/0.619) -- reproduces the paper's density-dependent winner (monotonic, not the exact non-monotonic re-flip)."
   status: complete
-  headline: "PARTIAL (strong) — density-dependent winner reversal reproduced over the full 21-day horizon; not the paper's exact non-monotonic re-flip."
+  reproduces: "Cockx et al. 2024, Fig. 5 (2D RS-vs-YS competition, shoving mechanics)"
+  headline: "Reproduces Cockx et al. 2024 Fig. 5. — PARTIAL (strong): density-dependent winner reversal reproduced over the full 21-day horizon; not the paper's exact non-monotonic re-flip."
 conditions:
   baseline:
     composite: viva_biofilm.composites.competition.competition
@@ -154,12 +155,15 @@ visualizations:
 - name: outcome vs seeding density
   address: image:charts/outcome_vs_density.png
   config: {title: "Competition outcome vs seeding density", caption: "Final RS biomass fraction at n_each=5/10/50, with the 0.5 tie line marked"}
-- name: colony at n_each=5
+- name: "colony at n_each=5 (Fig. 5 view)"
   address: image:charts/colony_density5.png
-  config: {title: "Final colony, n_each=5", caption: "Agents colored by strategy (RS blue, YS red) at the low-density seeding"}
-- name: colony at n_each=50
+  config: {title: "Cockx 2024 Fig. 5 view — colony at n_each=5 (t=21d)", caption: "Day-21 biofilm cross-section, cells colored by strategy (RS blue, YS red) over the oxygen field (grayscale: dark=depleted near substratum, light=bulk O2), a 60-µm interior window. Low-density seeding — YS ahead."}
+- name: "colony at n_each=10 (Fig. 5 view)"
+  address: image:charts/colony_density10.png
+  config: {title: "Cockx 2024 Fig. 5 view — colony at n_each=10 (t=21d)", caption: "Same view at intermediate-density seeding — RS ahead. Cells over the oxygen gradient they draw down."}
+- name: "colony at n_each=50 (Fig. 5 view)"
   address: image:charts/colony_density50.png
-  config: {title: "Final colony, n_each=50", caption: "Agents colored by strategy (RS blue, YS red) at the high-density seeding"}
+  config: {title: "Cockx 2024 Fig. 5 view — colony at n_each=50 (t=21d)", caption: "Same view at high-density seeding — RS ahead. Cells colored by strategy over the oxygen field."}
 - name: RS fraction over time
   address: image:charts/fraction_over_time.png
   config: {title: "RS biomass fraction over time", caption: "RS/(RS+YS) biomass fraction vs time, one line per seeding density"}
@@ -167,12 +171,15 @@ embed_visualizations:
 - name: "Outcome vs seeding density (interactive)"
   url: /reports/figures/fig5-rs-ys-competition/outcome_vs_density.html
   description: Final RS biomass fraction vs n_each, hover for exact values; the 0.5 tie line and RS/YS-wins zones are marked.
-- name: "Colony at n_each=5 (interactive)"
+- name: "Colony at n_each=5 (interactive, Fig. 5 view)"
   url: /reports/figures/fig5-rs-ys-competition/colony_density5.html
-  description: Final spatial colony at the low-density seeding, agents colored by strategy identity.
-- name: "Colony at n_each=50 (interactive)"
+  description: Day-21 biofilm cross-section (low density, YS ahead), cells by strategy over the oxygen gradient.
+- name: "Colony at n_each=10 (interactive, Fig. 5 view)"
+  url: /reports/figures/fig5-rs-ys-competition/colony_density10.html
+  description: Day-21 biofilm cross-section (intermediate density, RS ahead), cells by strategy over the oxygen gradient.
+- name: "Colony at n_each=50 (interactive, Fig. 5 view)"
   url: /reports/figures/fig5-rs-ys-competition/colony_density50.html
-  description: Final spatial colony at the high-density seeding, agents colored by strategy identity.
+  description: Day-21 biofilm cross-section (high density, RS ahead), cells by strategy over the oxygen gradient.
 - name: "RS fraction over time (interactive)"
   url: /reports/figures/fig5-rs-ys-competition/fraction_over_time.html
   description: RS biomass fraction vs time for each seeding density, hover for exact values.

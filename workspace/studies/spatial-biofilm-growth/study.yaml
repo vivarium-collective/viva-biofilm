@@ -35,7 +35,8 @@ study_card:
   phase: Simulate / Evaluate
   one_liner: "40 agents -> 640-agent biofilm, 11.7 um thick, with a real substrate gradient."
   status: complete
-  headline: "PASS — grown, developed, substrate-limited."
+  reproduces: "Reference-model qualitative behavior (Cockx et al. 2024) — not a specific numbered figure"
+  headline: "Reference-model behavior (Cockx 2024; no numbered figure). — PASS: grown, developed, substrate-limited."
 conditions:
   baseline:
     composite: viva_biofilm.composites.biofilm.biofilm

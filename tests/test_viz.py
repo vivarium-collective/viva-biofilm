@@ -39,10 +39,21 @@ def test_growth_curves_and_save(tmp_path):
 def test_strategy_colony_figure_has_two_strategy_traces():
     fig = viz.strategy_colony_figure(_competition_snaps()[-1])
     assert isinstance(fig, go.Figure)
-    marker_traces = [t for t in fig.data if t.mode and "markers" in t.mode]
+    marker_traces = [t for t in fig.data
+                     if getattr(t, "mode", None) and "markers" in t.mode]
     assert len(marker_traces) == 2  # RS + YS scatter traces
     names = {t.name.split(" ")[0] for t in marker_traces}
     assert names == {"RS", "YS"}
+    # The Fig. 5 view draws the oxygen field as a grayscale background heatmap.
+    assert any(t.type == "heatmap" for t in fig.data)
+
+
+def test_strategy_colony_figure_without_solute_has_no_heatmap():
+    fig = viz.strategy_colony_figure(_competition_snaps()[-1], show_solute=None)
+    assert not any(t.type == "heatmap" for t in fig.data)
+    marker_traces = [t for t in fig.data
+                     if getattr(t, "mode", None) and "markers" in t.mode]
+    assert len(marker_traces) == 2
 
 
 def test_competition_outcome_figure_has_tie_line_and_range():

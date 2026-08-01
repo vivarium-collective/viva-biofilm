@@ -344,54 +344,84 @@ def growth_curves_figure(snapshots: list[dict]) -> go.Figure:
     return fig
 
 
-def strategy_colony_figure(snapshot: dict, dx: float = 1.5625, title: str | None = None) -> go.Figure:
-    """Colony scatter colored by STRATEGY identity (RS vs YS), not a continuous
-    field. Same true-to-scale radius / domain box / substratum line treatment
-    as ``colony_figure``, but color is a fixed two-way categorical split —
-    RS blue, YS red (see ``STRATEGY_PALETTE``) — reading ``agents["species"]``
-    (0 = RS, 1 = YS) rather than a sequential colorscale.
+# Grayscale background for the oxygen field behind a strategy colony: low O2
+# (consumed, deep in the biofilm) -> dark, high O2 (bulk, at the surface) ->
+# light. This is the visual signature of Cockx et al. 2024 Fig. 5 — bacterial
+# cells colored by strategy over the substrate gradient they draw down.
+OXYGEN_BG_SCALE = [[0.0, "#1c2a33"], [0.5, "#7c8a93"], [1.0, "#eef2f4"]]
+
+
+def strategy_colony_figure(snapshot: dict, dx: float = 1.5625, title: str | None = None,
+                           show_solute: str | None = "oxygen",
+                           x_window: tuple[float, float] | None = None) -> go.Figure:
+    """Colony cross-section colored by STRATEGY identity (RS blue, YS red) over
+    the oxygen field it consumes — the Cockx et al. 2024 Fig. 5 view.
+
+    Reads ``agents["species"]`` (0 = RS, 1 = YS) for a fixed two-way categorical
+    color split, and (when ``show_solute`` names a solute present in the
+    snapshot) draws that solute field as a grayscale background heatmap, cropped
+    to the biofilm region. ``x_window`` optionally crops to a representative
+    horizontal slice so the vertical structure reads at true aspect.
     """
     agents = snapshot["agents"]
     species = agents["species"]
     x_max, y_max = _domain_extent(snapshot, dx)
 
-    domain_box_trace = go.Scatter(
-        x=[0, x_max, x_max, 0, 0], y=[0, 0, y_max, y_max, 0],
-        mode="lines", line=dict(color="rgba(80,80,80,0.4)", width=1, dash="dot"),
-        name="domain", hoverinfo="skip", showlegend=False,
-    )
+    top_agent = max(agents["y"], default=0.0)
+    view_h = min(y_max, max(top_agent * 1.35, 12.0))
+    x0, x1 = x_window if x_window is not None else (0.0, x_max)
+
+    traces = []
+
+    # Background: the solute (oxygen) gradient the biofilm grows in / draws down.
+    if show_solute and show_solute in snapshot.get("solutes", {}):
+        sol = snapshot["solutes"][show_solute]
+        field, nx, ny = sol["field"], int(sol["nx"]), int(sol["ny"])
+        # Only rows within the cropped view height, columns within the x window.
+        j_top = min(ny, int(view_h / dx) + 2)
+        i_lo, i_hi = max(0, int(x0 / dx)), min(nx, int(x1 / dx) + 2)
+        z = [[field[i + j * nx] for i in range(i_lo, i_hi)] for j in range(j_top)]
+        xs = [i * dx for i in range(i_lo, i_hi)]
+        ys = [j * dx for j in range(j_top)]
+        traces.append(go.Heatmap(
+            x=xs, y=ys, z=z, colorscale=OXYGEN_BG_SCALE, zsmooth="best",
+            colorbar=dict(title=f"{show_solute}<br>g/m³", thickness=12, len=0.7),
+            hovertemplate="x=%{x:.1f} µm<br>y=%{y:.1f} µm<br>%{z:.3f} g/m³<extra></extra>",
+        ))
+
     substratum_trace = go.Scatter(
-        x=[0, x_max], y=[0, 0], mode="lines",
+        x=[x0, x1], y=[0, 0], mode="lines",
         line=dict(color="#8B5A2B", width=3), name="substratum",
         hoverinfo="skip", showlegend=False,
     )
-    traces = [domain_box_trace, substratum_trace]
+    traces.append(substratum_trace)
 
     for idx in sorted(STRATEGY_NAMES):
-        xs = [x for x, s in zip(agents["x"], species) if int(s) == idx]
-        ys = [y for y, s in zip(agents["y"], species) if int(s) == idx]
-        radii = [r for r, s in zip(agents["radius"], species) if int(s) == idx]
-        sizes = _radius_to_pixel_size(radii, x_max)
+        xs = [x for x, s in zip(agents["x"], species)
+              if int(s) == idx and x0 <= x <= x1]
+        ys = [y for y, x, s in zip(agents["y"], agents["x"], species)
+              if int(s) == idx and x0 <= x <= x1]
+        radii = [r for r, x, s in zip(agents["radius"], agents["x"], species)
+                 if int(s) == idx and x0 <= x <= x1]
+        sizes = _radius_to_pixel_size(radii, x1 - x0)
+        n_total = sum(1 for s in species if int(s) == idx)
         traces.append(go.Scatter(
             x=xs, y=ys, mode="markers",
             marker=dict(
                 size=sizes,
                 color=STRATEGY_PALETTE[idx],
-                line=dict(width=0.6, color="rgba(30,30,30,0.35)"),
-                opacity=0.9,
+                line=dict(width=0.5, color="rgba(10,10,10,0.5)"),
+                opacity=0.95,
             ),
-            name=f"{STRATEGY_NAMES[idx]} (n={len(xs)})",
+            name=f"{STRATEGY_NAMES[idx]} (n={n_total})",
             hovertemplate=f"{STRATEGY_NAMES[idx]}<br>" + "x=%{x:.1f} µm<br>y=%{y:.1f} µm<extra></extra>",
         ))
-
-    top_agent = max(agents["y"], default=0.0)
-    view_h = min(y_max, max(top_agent * 1.5, 16.0))
 
     fig_title = title or f"Strategy colony — t={snapshot['time']:.2f} d, n={snapshot['population']}"
     layout = _base_layout(fig_title)
     layout.update(
         height=460,
-        xaxis=dict(title="x (µm)", range=[0, x_max], constrain="domain",
+        xaxis=dict(title="x (µm)", range=[x0, x1], constrain="domain",
                    showgrid=False, zeroline=False),
         yaxis=dict(
             title="height above substratum (µm)",
