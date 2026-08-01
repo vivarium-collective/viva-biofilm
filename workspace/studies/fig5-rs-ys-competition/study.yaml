@@ -162,7 +162,10 @@ embed_visualizations:
   description: RS biomass fraction vs time for each seeding density, hover for exact values.
 runs: []
 references:
-  bib_keys: [cockx2024]
+- key: cockx2024
+  title: "Cockx et al. 2024 — Is it selfish to be filamentous in biofilms? Individual-based modeling with iDynoMiCS 2.0 (PLOS Comput Biol 20(2):e1011303)"
+  url: "https://doi.org/10.1371/journal.pcbi.1011303"
+  notes: "Source paper for the RS-vs-YS competition (Fig 5); kinetics from S1 Text Table K (Kreft 2004). PDF in workspace/references/papers/."
 pipeline_gate:
   prerequisites: []
   enables: []
