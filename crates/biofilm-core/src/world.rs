@@ -172,6 +172,15 @@ pub struct World {
     // self-consistent field.
     last_coupling_converged: bool,
     last_coupling_iters: usize,
+
+    // ---- Erosion detachment (Task 2) -------------------------------------
+    //
+    // Wanner-Gujer height-proportional surface erosion rate `k_det`
+    // (units 1/(µm*day)): see `detachment::erode_surface`, called from
+    // `step`. Default 0.0 is a strict no-op (see `erode_surface`'s guard),
+    // so every pre-Task-2 spec/test is unaffected unless a spec explicitly
+    // sets a rate via `set_detachment_rate`.
+    detachment_rate: f64,
 }
 
 impl Default for World {
@@ -203,6 +212,7 @@ impl World {
             pde_omega: 1.8,
             last_coupling_converged: false,
             last_coupling_iters: 0,
+            detachment_rate: 0.0,
         }
     }
 
@@ -334,6 +344,14 @@ impl World {
         self.pde_tol = tol;
         self.pde_max_iter = max_iter;
         self.pde_omega = omega;
+    }
+
+    /// Set the Wanner-Gujer surface-erosion rate `k_det` (units
+    /// 1/(µm*day)) used by `step`'s call to `detachment::erode_surface`.
+    /// `k_det <= 0.0` (the default) disables erosion entirely — see
+    /// `erode_surface`'s no-op guard.
+    pub fn set_detachment_rate(&mut self, k_det: f64) {
+        self.detachment_rate = k_det;
     }
 
     /// Record intent to spawn `n` species-0 agents randomly placed within a
@@ -574,6 +592,21 @@ impl World {
         let domain_x = self.grid.nx as f64 * self.grid.dx;
         let shove_density = self.species.first().map(|s| s.density).unwrap_or(0.15);
         crate::relaxation::relax(&mut self.agents, shove_density, domain_x, 30, 0.5);
+        // Rate-based surface erosion (Task 2): per-column Wanner-Gujer
+        // recession, `bin_width = grid.dx` so erosion columns line up with
+        // the reaction-diffusion grid's own columns. No-op when
+        // `detachment_rate <= 0.0` (the default). Runs BEFORE the
+        // `detach_above_height` domain-ceiling clip, which stays as a hard
+        // safety bound so nothing can ever exceed the PDE domain regardless
+        // of erosion configuration.
+        crate::detachment::erode_surface(
+            &mut self.agents,
+            self.detachment_rate,
+            dt,
+            self.grid.dx,
+            domain_x,
+            shove_density,
+        );
         let max_h = self.grid.ny as f64 * self.grid.dx;
         crate::detachment::detach_above_height(&mut self.agents, max_h);
         self.time += dt;
