@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Study: runtime-and-scaling</title>
+<title>Study: fig5-rs-ys-competition</title>
 <link rel="stylesheet" href="/viva-biofilm/dashboard/assets/style.css">
 <link rel="stylesheet" href="/viva-biofilm/dashboard/assets/progress-track.css">
 <!-- Inherit the workbench light/dark theme (this page loads in an iframe;
@@ -14,7 +14,7 @@
 <header class="study-header">
   <div style="display:flex; align-items:baseline; gap:12px; justify-content:space-between;">
   <h1 class="study-title">
-    <span class="study-name" id="study-name" data-slug="runtime-and-scaling" title="runtime-and-scaling">Runtime and scaling: throughput and scaling curves for the Rust engine</span>
+    <span class="study-name" id="study-name" data-slug="fig5-rs-ys-competition" title="fig5-rs-ys-competition">RS vs YS competition: does seeding density decide the winner?</span>
     
     
     
@@ -35,7 +35,7 @@
 
 
 
-<div id="readiness-panel" data-slug="runtime-and-scaling"></div>
+<div id="readiness-panel" data-slug="fig5-rs-ys-competition"></div>
 
 
 
@@ -61,7 +61,7 @@
 .spine-chip-warn{display:inline-block;font-size:0.82em;font-weight:600;padding:1px 8px;border-radius:9999px;background:#fffbeb;border:1px solid #f59e0b;color:#92400e;margin-left:6px}
 .spine-div{font-weight:600;color:#92400e}
 </style>
-<div id="spine-summary" class="spine-summary" data-slug="runtime-and-scaling"></div>
+<div id="spine-summary" class="spine-summary" data-slug="fig5-rs-ys-competition"></div>
 
 <nav class="study-tabs" aria-label="Study sections">
   <div class="study-pillars">
@@ -219,10 +219,14 @@
     <div class="overview-section">
       
       <div class="purpose-callout" style="background:#eff6ff;border-left:4px solid #3b82f6">
-        <strong>Question.</strong> After the ~23x performance pass and the addition of configurable PDE
-parameters, how does the viva-biofilm engine&#39;s wall-time scale with grid
-size, agent population, and run duration -- and what throughput
-(agent-steps/sec) does it sustain?
+        <strong>Question.</strong> Cockx et al. 2024 (Fig. 5) report that when a Rate Strategist (RS — faster
+growth, lower yield) competes against a Yield Strategist (YS — slower
+growth, higher/more efficient yield) for a single shared oxygen substrate
+in a 2D biofilm, the winner depends on seeding density: YS is favored at
+low density, RS at intermediate density, YS favored again at high density.
+Does viva-biofilm&#39;s multi-strategy competition engine — seeded with the
+paper&#39;s exact Table-K RS/YS kinetics — reproduce a density-dependent
+competition outcome, and in what direction?
 
       </div>
       
@@ -335,13 +339,13 @@ size, agent population, and run duration -- and what throughput
         <label class="tag-control"><span class="tag-k">confidence</span>
           <select class="narrative-input tag-select" data-narrative-path="report.confidence">
             <option value="">—</option>
-            <option value="high" selected>high</option>
-            <option value="medium" >medium</option>
+            <option value="high" >high</option>
+            <option value="medium" selected>medium</option>
             <option value="low" >low</option>
           </select></label>
         <label class="tag-control"><span class="tag-k">evidence</span>
           <input type="text" class="narrative-input tag-input" data-narrative-path="report.evidence_quality"
-                 value="deterministic sweeps (fixed seed per config, no statistical repeats)" placeholder="calibrated | literature-matched | …"></label>
+                 value="deterministic single-seed runs per density (3 densities, no statistical ensemble; shortened horizon, see caveat below)" placeholder="calibrated | literature-matched | …"></label>
       </div>
     </div>
 
@@ -356,9 +360,7 @@ size, agent population, and run duration -- and what throughput
           Each study is a model-building gate: it answers <em>"Can we safely build the next layer?"</em>
         </p>
         
-        <div style="margin-bottom:6px"><strong>Prerequisites:</strong>
-          <code>spatial-biofilm-growth</code>
-        </div>
+        <div style="margin-bottom:6px"><strong>Prerequisites:</strong> <em class="muted">none (root study)</em></div>
         
         
         
@@ -377,8 +379,9 @@ size, agent population, and run duration -- and what throughput
         
         
         <p style="margin:0">
-          <strong>1</strong> tests defined —
+          <strong>2</strong> tests defined —
             <span class="classification-pill classification-primary">1 primary</span>
+            <span class="classification-pill classification-supporting">1 supporting</span>
           <a onclick="_setStudyTab('tests')" style="cursor:pointer;color:#3b82f6;text-decoration:underline;margin-left:6px">View on Tests tab →</a>
         </p>
       </div>
@@ -443,24 +446,24 @@ size, agent population, and run duration -- and what throughput
     <h3>Model <span class="muted" style="font-size:0.85em;font-weight:normal">— the composite(s) this study simulates</span></h3>
     <p class="muted" style="font-size:0.88em">Each row runs one composite. Below it: the composite address (open it in the bigraph-loom explorer), the resolved configuration that actually executes, and the run settings.</p>
     
-    <div class="cond-block" data-model-composite="viva_biofilm.composites.biofilm.biofilm" data-model-overrides='{}'>
+    <div class="cond-block" data-model-composite="viva_biofilm.composites.competition.competition" data-model-overrides='{}'>
       <div class="cond-block-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <strong>runtime-and-scaling</strong>
+        <strong>fig5-rs-ys-competition</strong>
         
-        <code style="font-size:0.82em;color:#374151;background:#f1f5f9;padding:1px 6px;border-radius:3px">viva_biofilm.composites.biofilm.biofilm</code>
+        <code style="font-size:0.82em;color:#374151;background:#f1f5f9;padding:1px 6px;border-radius:3px">viva_biofilm.composites.competition.competition</code>
         <button type="button" class="action-btn" style="font-size:0.8em"
-                onclick="_openCompositeLoom('viva_biofilm.composites.biofilm.biofilm')">🧬 explore &amp; run ↗</button>
+                onclick="_openCompositeLoom('viva_biofilm.composites.competition.competition')">🧬 explore &amp; run ↗</button>
         
       </div>
       
       <div style="display:flex;align-items:center;gap:6px;margin-top:6px">
-        <input type="text" class="baseline-composite-input" data-baseline-name="runtime-and-scaling"
-               value="viva_biofilm.composites.biofilm.biofilm" placeholder="pkg.composites.name"
+        <input type="text" class="baseline-composite-input" data-baseline-name="fig5-rs-ys-competition"
+               value="viva_biofilm.composites.competition.competition" placeholder="pkg.composites.name"
                style="flex:1;min-width:200px;font-family:monospace;font-size:0.82em;padding:3px 6px" />
         <button type="button" class="action-btn baseline-composite-set" style="font-size:0.8em"
-                data-baseline-name="runtime-and-scaling">Set composite</button>
+                data-baseline-name="fig5-rs-ys-competition">Set composite</button>
       </div>
-      <div class="baseline-composite-status muted" data-baseline-name="runtime-and-scaling" style="font-size:0.8em;margin-top:2px"></div>
+      <div class="baseline-composite-status muted" data-baseline-name="fig5-rs-ys-competition" style="font-size:0.8em;margin-top:2px"></div>
       
       <div class="model-config-mount" style="margin-top:8px">
         <p class="muted" style="font-size:0.85em;margin:0">Loading configuration…</p></div>
@@ -484,7 +487,7 @@ size, agent population, and run duration -- and what throughput
     
     <div class="cond-block">
       <div class="cond-block-title">Baseline</div>
-      <div style="font-size:0.92em;margin-bottom:4px">Composite: <code>viva_biofilm.composites.biofilm.biofilm</code></div>
+      <div style="font-size:0.92em;margin-bottom:4px">Composite: <code>viva_biofilm.composites.competition.competition</code></div>
       
     </div>
     
@@ -499,15 +502,15 @@ size, agent population, and run duration -- and what throughput
         
       </div>
       <p class="muted" style="font-size:0.85em;margin:0 0 6px 0">Edit a value in the Current column and click <strong>Save</strong>. The next <code>pbg_runner</code> invocation for this study reads the updated value from <code>study.yaml</code>.</p>
-      <table class="cond-table cond-expert-table" data-study="runtime-and-scaling">
+      <table class="cond-table cond-expert-table" data-study="fig5-rs-ys-competition">
         <thead><tr><th>Name</th><th>Type</th><th>Default</th><th>Current</th><th>Range</th><th>Gate</th><th></th></tr></thead>
         <tbody>
           
           
           
           
-          <tr data-ei-name="grid-sweep">
-            <td title=""><code>grid-sweep</code></td>
+          <tr data-ei-name="table-k-kinetics">
+            <td title=""><code>table-k-kinetics</code></td>
             <td></td>
             <td><code></code></td>
             <td>
@@ -527,7 +530,7 @@ size, agent population, and run duration -- and what throughput
             </td>
             <td>
               <button class="action-btn cond-ei-save" type="button"
-                      onclick="_saveExpertInput('runtime-and-scaling', 'grid-sweep', this)">Save</button>
+                      onclick="_saveExpertInput('fig5-rs-ys-competition', 'table-k-kinetics', this)">Save</button>
               <span class="cond-ei-flash" style="display:none;margin-left:6px;font-size:0.85em"></span>
             </td>
           </tr>
@@ -535,8 +538,8 @@ size, agent population, and run duration -- and what throughput
           
           
           
-          <tr data-ei-name="population-sweep">
-            <td title=""><code>population-sweep</code></td>
+          <tr data-ei-name="density-sweep">
+            <td title=""><code>density-sweep</code></td>
             <td></td>
             <td><code></code></td>
             <td>
@@ -556,7 +559,7 @@ size, agent population, and run duration -- and what throughput
             </td>
             <td>
               <button class="action-btn cond-ei-save" type="button"
-                      onclick="_saveExpertInput('runtime-and-scaling', 'population-sweep', this)">Save</button>
+                      onclick="_saveExpertInput('fig5-rs-ys-competition', 'density-sweep', this)">Save</button>
               <span class="cond-ei-flash" style="display:none;margin-left:6px;font-size:0.85em"></span>
             </td>
           </tr>
@@ -564,8 +567,8 @@ size, agent population, and run duration -- and what throughput
           
           
           
-          <tr data-ei-name="duration-sweep">
-            <td title=""><code>duration-sweep</code></td>
+          <tr data-ei-name="shortened-horizon">
+            <td title=""><code>shortened-horizon</code></td>
             <td></td>
             <td><code></code></td>
             <td>
@@ -585,7 +588,7 @@ size, agent population, and run duration -- and what throughput
             </td>
             <td>
               <button class="action-btn cond-ei-save" type="button"
-                      onclick="_saveExpertInput('runtime-and-scaling', 'duration-sweep', this)">Save</button>
+                      onclick="_saveExpertInput('fig5-rs-ys-competition', 'shortened-horizon', this)">Save</button>
               <span class="cond-ei-flash" style="display:none;margin-left:6px;font-size:0.85em"></span>
             </td>
           </tr>
@@ -643,12 +646,12 @@ size, agent population, and run duration -- and what throughput
   
   <div class="panel" style="padding:14px 18px;margin-bottom:12px">
     <header style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px">
-      <strong style="font-size:1.05em">runtime-and-scaling-baseline</strong>
+      <strong style="font-size:1.05em">fig5-rs-ys-competition-baseline</strong>
       <span class="sim-status-pill sim-status-ready">ready</span>
       
     </header>
     <div style="font-size:0.9em;margin-bottom:6px">
-      <strong>Base model:</strong> <code>viva_biofilm.composites.biofilm.biofilm</code>
+      <strong>Base model:</strong> <code>viva_biofilm.composites.competition.competition</code>
     </div>
     
     <p style="margin:4px 0;font-size:0.9em" class="muted">No perturbation (baseline run)</p>
@@ -659,7 +662,7 @@ size, agent population, and run duration -- and what throughput
     </p>
     <p style="margin:4px 0;font-size:0.86em" class="muted">
       
-      <strong>Tests applied:</strong> 1 · 
+      <strong>Tests applied:</strong> 2 · 
       
     </p>
     
@@ -698,7 +701,7 @@ size, agent population, and run duration -- and what throughput
     
     <div id="readouts-download" style="margin:0 0 16px 0"></div>
 
-    <div id="readouts-table" data-study="runtime-and-scaling">
+    <div id="readouts-table" data-study="fig5-rs-ys-competition">
       <p class="empty-message">Loading readouts from the composite emit plan…</p>
     </div>
 
@@ -724,60 +727,60 @@ size, agent population, and run duration -- and what throughput
       
       <div class="embed-viz-card" style="border:1px solid #e2e8f0;border-radius:6px;margin-bottom:14px;background:#fff">
         <div style="display:flex;align-items:center;gap:12px;padding:8px 12px;border-bottom:1px solid #e5e7eb;background:#f9fafb">
-          <strong style="flex:1">Grid-size scaling (interactive)</strong>
-          <a href="/viva-biofilm/dashboard/reports/figures/runtime-and-scaling/scaling_grid.html" target="_blank" class="btn-mini">Open in new tab ↗</a>
+          <strong style="flex:1">Outcome vs seeding density (interactive)</strong>
+          <a href="/reports/figures/fig5-rs-ys-competition/outcome_vs_density.html" target="_blank" class="btn-mini">Open in new tab ↗</a>
         </div>
         
-        <p class="muted" style="margin:6px 12px;font-size:0.88em">Wall time per step vs. grid cell count (log-log). Hover for exact grid dims and ms/step.</p>
+        <p class="muted" style="margin:6px 12px;font-size:0.88em">Final RS biomass fraction vs n_each, hover for exact values; the 0.5 tie line and RS/YS-wins zones are marked.</p>
         
-        <iframe src="/viva-biofilm/dashboard/reports/figures/runtime-and-scaling/scaling_grid.html"
+        <iframe src="/reports/figures/fig5-rs-ys-competition/outcome_vs_density.html"
                 style="width:100%;min-height:200px;border:0;display:block"
-                loading="lazy" title="Grid-size scaling (interactive)"
+                loading="lazy" title="Outcome vs seeding density (interactive)"
                 onload="(function(f){try{var d=f.contentDocument;if(!d)return;var b=d.body,e=d.documentElement;var bStyle=b&&d.defaultView&&d.defaultView.getComputedStyle?d.defaultView.getComputedStyle(b):null;var pinnedH=0;if(bStyle&&(bStyle.overflow||'').indexOf('hidden')>=0){var hm=(bStyle.height||'').match(/^(\d+(?:\.\d+)?)px$/);if(hm)pinnedH=Math.round(parseFloat(hm[1]));}var h=pinnedH>0?pinnedH:Math.max(e?e.scrollHeight:0,b?b.scrollHeight:0);if(h>0)f.style.height=(h+24)+'px';}catch(e){}})(this)"
                 ></iframe>
       </div>
       
       <div class="embed-viz-card" style="border:1px solid #e2e8f0;border-radius:6px;margin-bottom:14px;background:#fff">
         <div style="display:flex;align-items:center;gap:12px;padding:8px 12px;border-bottom:1px solid #e5e7eb;background:#f9fafb">
-          <strong style="flex:1">Population scaling (interactive)</strong>
-          <a href="/viva-biofilm/dashboard/reports/figures/runtime-and-scaling/scaling_population.html" target="_blank" class="btn-mini">Open in new tab ↗</a>
+          <strong style="flex:1">Colony at n_each=5 (interactive)</strong>
+          <a href="/reports/figures/fig5-rs-ys-competition/colony_density5.html" target="_blank" class="btn-mini">Open in new tab ↗</a>
         </div>
         
-        <p class="muted" style="margin:6px 12px;font-size:0.88em">Wall time per step vs. final agent count (log-log). Hover for the initial agent count.</p>
+        <p class="muted" style="margin:6px 12px;font-size:0.88em">Final spatial colony at the low-density seeding, agents colored by strategy identity.</p>
         
-        <iframe src="/viva-biofilm/dashboard/reports/figures/runtime-and-scaling/scaling_population.html"
+        <iframe src="/reports/figures/fig5-rs-ys-competition/colony_density5.html"
                 style="width:100%;min-height:200px;border:0;display:block"
-                loading="lazy" title="Population scaling (interactive)"
+                loading="lazy" title="Colony at n_each=5 (interactive)"
                 onload="(function(f){try{var d=f.contentDocument;if(!d)return;var b=d.body,e=d.documentElement;var bStyle=b&&d.defaultView&&d.defaultView.getComputedStyle?d.defaultView.getComputedStyle(b):null;var pinnedH=0;if(bStyle&&(bStyle.overflow||'').indexOf('hidden')>=0){var hm=(bStyle.height||'').match(/^(\d+(?:\.\d+)?)px$/);if(hm)pinnedH=Math.round(parseFloat(hm[1]));}var h=pinnedH>0?pinnedH:Math.max(e?e.scrollHeight:0,b?b.scrollHeight:0);if(h>0)f.style.height=(h+24)+'px';}catch(e){}})(this)"
                 ></iframe>
       </div>
       
       <div class="embed-viz-card" style="border:1px solid #e2e8f0;border-radius:6px;margin-bottom:14px;background:#fff">
         <div style="display:flex;align-items:center;gap:12px;padding:8px 12px;border-bottom:1px solid #e5e7eb;background:#f9fafb">
-          <strong style="flex:1">Duration scaling (interactive)</strong>
-          <a href="/viva-biofilm/dashboard/reports/figures/runtime-and-scaling/scaling_duration.html" target="_blank" class="btn-mini">Open in new tab ↗</a>
+          <strong style="flex:1">Colony at n_each=50 (interactive)</strong>
+          <a href="/reports/figures/fig5-rs-ys-competition/colony_density50.html" target="_blank" class="btn-mini">Open in new tab ↗</a>
         </div>
         
-        <p class="muted" style="margin:6px 12px;font-size:0.88em">Total wall time vs. step count; near-linear, with the deviation explained by population growth during longer runs.</p>
+        <p class="muted" style="margin:6px 12px;font-size:0.88em">Final spatial colony at the high-density seeding, agents colored by strategy identity.</p>
         
-        <iframe src="/viva-biofilm/dashboard/reports/figures/runtime-and-scaling/scaling_duration.html"
+        <iframe src="/reports/figures/fig5-rs-ys-competition/colony_density50.html"
                 style="width:100%;min-height:200px;border:0;display:block"
-                loading="lazy" title="Duration scaling (interactive)"
+                loading="lazy" title="Colony at n_each=50 (interactive)"
                 onload="(function(f){try{var d=f.contentDocument;if(!d)return;var b=d.body,e=d.documentElement;var bStyle=b&&d.defaultView&&d.defaultView.getComputedStyle?d.defaultView.getComputedStyle(b):null;var pinnedH=0;if(bStyle&&(bStyle.overflow||'').indexOf('hidden')>=0){var hm=(bStyle.height||'').match(/^(\d+(?:\.\d+)?)px$/);if(hm)pinnedH=Math.round(parseFloat(hm[1]));}var h=pinnedH>0?pinnedH:Math.max(e?e.scrollHeight:0,b?b.scrollHeight:0);if(h>0)f.style.height=(h+24)+'px';}catch(e){}})(this)"
                 ></iframe>
       </div>
       
       <div class="embed-viz-card" style="border:1px solid #e2e8f0;border-radius:6px;margin-bottom:14px;background:#fff">
         <div style="display:flex;align-items:center;gap:12px;padding:8px 12px;border-bottom:1px solid #e5e7eb;background:#f9fafb">
-          <strong style="flex:1">Throughput (interactive)</strong>
-          <a href="/viva-biofilm/dashboard/reports/figures/runtime-and-scaling/throughput.html" target="_blank" class="btn-mini">Open in new tab ↗</a>
+          <strong style="flex:1">RS fraction over time (interactive)</strong>
+          <a href="/reports/figures/fig5-rs-ys-competition/fraction_over_time.html" target="_blank" class="btn-mini">Open in new tab ↗</a>
         </div>
         
-        <p class="muted" style="margin:6px 12px;font-size:0.88em">Agent-steps/sec across the grid and population sweeps; peak ~303,000 agent-steps/sec.</p>
+        <p class="muted" style="margin:6px 12px;font-size:0.88em">RS biomass fraction vs time for each seeding density, hover for exact values.</p>
         
-        <iframe src="/viva-biofilm/dashboard/reports/figures/runtime-and-scaling/throughput.html"
+        <iframe src="/reports/figures/fig5-rs-ys-competition/fraction_over_time.html"
                 style="width:100%;min-height:200px;border:0;display:block"
-                loading="lazy" title="Throughput (interactive)"
+                loading="lazy" title="RS fraction over time (interactive)"
                 onload="(function(f){try{var d=f.contentDocument;if(!d)return;var b=d.body,e=d.documentElement;var bStyle=b&&d.defaultView&&d.defaultView.getComputedStyle?d.defaultView.getComputedStyle(b):null;var pinnedH=0;if(bStyle&&(bStyle.overflow||'').indexOf('hidden')>=0){var hm=(bStyle.height||'').match(/^(\d+(?:\.\d+)?)px$/);if(hm)pinnedH=Math.round(parseFloat(hm[1]));}var h=pinnedH>0?pinnedH:Math.max(e?e.scrollHeight:0,b?b.scrollHeight:0);if(h>0)f.style.height=(h+24)+'px';}catch(e){}})(this)"
                 ></iframe>
       </div>
@@ -808,14 +811,14 @@ size, agent population, and run duration -- and what throughput
     <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
       <h3 class="section-title" style="margin-right:auto">Analysis result files</h3>
       <a id="data-download-all" class="btn-mini" style="display:none"
-         href="/api/study-analysis-zip?study=runtime-and-scaling">Download all (.zip)</a>
+         href="/api/study-analysis-zip?study=fig5-rs-ys-competition">Download all (.zip)</a>
     </div>
     <p class="muted" style="margin:0 0 10px 0;font-size:0.88em">
       Tabular outputs (<code>.csv</code> / <code>.tsv</code>) written by this study's
       Analysis steps — e.g. per-run analysis tables and exports. Click a file to
       download it.
     </p>
-    <div id="data-files" data-study="runtime-and-scaling">
+    <div id="data-files" data-study="fig5-rs-ys-competition">
       <p class="empty-message">Loading result files…</p>
     </div>
 
@@ -862,10 +865,10 @@ size, agent population, and run duration -- and what throughput
     
     
     
-    <li class="expected-behavior-item" id="bt-throughput-and-scaling-measured"
+    <li class="expected-behavior-item" id="bt-density-dependent-competition"
         data-test-kind="behavioral"
         
-        data-pytest-node="throughput-and-scaling-measured"
+        data-pytest-node="density-dependent-competition"
         data-classification="primary"
         data-result="pending"
         style="margin: 0 0 10px 0; padding: 10px 12px; border-left: 4px solid #10b981; background: #f8fafc; border-radius: 4px;">
@@ -874,15 +877,51 @@ size, agent population, and run duration -- and what throughput
       <div style="display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;">
         <span class="bt-result" style="font-size: 0.75em; font-family: monospace; padding: 2px 8px; border-radius: 9999px; background: #f1f5f9; color: #475569">⏳ pending</span>
         <span class="classification-pill classification-primary">primary</span>
-        <strong style="font-size: 0.9em;">throughput-and-scaling-measured</strong>
+        <strong style="font-size: 0.9em;">density-dependent-competition</strong>
         
       </div>
-      <div style="margin-top: 6px; font-size: 0.95em;">Did the engine sustain measurable throughput and produce scaling curves across all three fixed sweep axes without any configuration exceeding the slow threshold?</div>
+      <div style="margin-top: 6px; font-size: 0.95em;">Do both strategies persist, and does the RS-vs-YS competition outcome vary with seeding density?</div>
       
       
       <details style="margin-top: 6px; font-size: 0.82em;">
         <summary class="muted" style="cursor: pointer;">Assertion</summary>
-        <pre style="background:#fff; padding:8px; margin:4px 0 0 0; border:1px solid #e2e8f0; border-radius:3px; overflow-x:auto;">measure: {"card": "workspace/studies/runtime-and-scaling/viz/report_card", "group": "performance", "kind": "report_card_axis"}
+        <pre style="background:#fff; padding:8px; margin:4px 0 0 0; border:1px solid #e2e8f0; border-radius:3px; overflow-x:auto;">measure: {"card": "workspace/studies/fig5-rs-ys-competition/viz/report_card", "group": "competition", "kind": "report_card_axis"}
+expect:  {"level": "within_tol", "op": "verdict_at_least"}</pre>
+      </details>
+      
+      
+      
+      
+    </li>
+    
+    
+    
+    
+    
+    
+    
+    
+    <li class="expected-behavior-item" id="bt-paper-flip-fidelity"
+        data-test-kind="behavioral"
+        
+        data-pytest-node="paper-flip-fidelity"
+        data-classification="supporting"
+        data-result="pending"
+        style="margin: 0 0 10px 0; padding: 10px 12px; border-left: 4px solid #3b82f6; background: #f8fafc; border-radius: 4px;">
+      
+        
+      <div style="display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;">
+        <span class="bt-result" style="font-size: 0.75em; font-family: monospace; padding: 2px 8px; border-radius: 9999px; background: #f1f5f9; color: #475569">⏳ pending</span>
+        <span class="classification-pill classification-supporting">supporting</span>
+        <strong style="font-size: 0.9em;">paper-flip-fidelity</strong>
+        
+      </div>
+      <div style="margin-top: 6px; font-size: 0.95em;">Does the density trend reproduce the paper&#39;s exact non-monotonic RS/YS flip (YS low, RS intermediate, YS high)?</div>
+      
+      
+      <details style="margin-top: 6px; font-size: 0.82em;">
+        <summary class="muted" style="cursor: pointer;">Assertion</summary>
+        <pre style="background:#fff; padding:8px; margin:4px 0 0 0; border:1px solid #e2e8f0; border-radius:3px; overflow-x:auto;">measure: {"card": "workspace/studies/fig5-rs-ys-competition/viz/report_card", "group": "paper-fidelity", "kind": "report_card_axis"}
 expect:  {"level": "within_tol", "op": "verdict_at_least"}</pre>
       </details>
       
@@ -1012,7 +1051,7 @@ expect:  {"level": "within_tol", "op": "verdict_at_least"}</pre>
 <script>window.__DASH_CONFIG__ = { mode: "snapshot", interactiveUrl: "https://github.com/vivarium-collective/viva-biofilm", basePath: "/viva-biofilm/dashboard", inputsDownloadBase: "https://github.com/vivarium-collective/viva-biofilm/raw/main", provenance: {"repo_slug": "vivarium-collective/viva-biofilm", "repo_url": "https://github.com/vivarium-collective/viva-biofilm", "commit": "bdd7c943c0e94e019d7dd7e1d4b2eed8c056383e", "commit_url": "https://github.com/vivarium-collective/viva-biofilm/commit/bdd7c943c0e94e019d7dd7e1d4b2eed8c056383e", "branch": "main", "generated_at": "2026-08-01 00:56 UTC"} };</script>
 <script src="/viva-biofilm/dashboard/assets/data-source.js"></script>
 <script>
-window._studyName = "runtime-and-scaling";
+window._studyName = "fig5-rs-ys-competition";
 window._study = null;  // populated by _bootstrapStudy() in study-detail.js
 
 // Save handler for the Conditions → Model settings editable rows.
@@ -1141,9 +1180,9 @@ window._seedFollowupProposal = _seedFollowupProposal;
   var el = document.getElementById("study-configure-run");
   if (!el || !window.ConfigureRun) return;
   
-  var compositeRef = "viva_biofilm.composites.biofilm.biofilm";
+  var compositeRef = "viva_biofilm.composites.competition.competition";
   
-  var slug = window._studyName || "runtime-and-scaling";
+  var slug = window._studyName || "fig5-rs-ys-competition";
   ConfigureRun.mount(el, { composite: compositeRef, target: "study", study: slug });
   // Read-only bundle: there's no live backend to run on — hide the remote-run
   // launcher (the Configure & Run widget already renders a disabled preview).

@@ -1,0 +1,1 @@
+{"investigation": "rate-yield-strategist-competition", "studies": [{"id": "study/fig5-rs-ys-competition", "slug": "fig5-rs-ys-competition", "type": "study", "label": "RS vs YS competition: does seeding density decide the winner?", "status": "complete"}], "study_edges": [], "chains": {"fig5-rs-ys-competition": {"nodes": [], "edges": [], "violations": [], "derived": false}}}
