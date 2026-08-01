@@ -18,9 +18,15 @@ def test_competition_produces_an_outcome_at_two_densities():
     for n in (5, 50):
         snaps = run_competition(competition_spec(n_each=n, seed=3), n_steps=60, dt=0.05, snapshot_every=60)
         last = snaps[-1]
+        pop_rs, pop_ys = last["pop_by_strategy"]
         rs, ys = last["biomass_by_strategy"]
+        # both strategies must genuinely PERSIST (non-extinct) at this density --
+        # a fraction of exactly 0.0 or 1.0 would silently pass a bare 0<=f<=1
+        # check even though one strategy had gone extinct, so check population
+        # directly, not just the derived fraction.
+        assert pop_rs > 0 and pop_ys > 0, f"n_each={n}: a strategy went extinct: pop_by_strategy={last['pop_by_strategy']}"
         outcomes[n] = rs / (rs + ys)  # RS biomass fraction
-    # both strategies persist and a fraction is measurable at both densities
-    assert all(0.0 <= f <= 1.0 for f in outcomes.values())
+        # a genuinely mixed outcome, not a degenerate 0/1 sweep artifact
+        assert 0.0 < outcomes[n] < 1.0
     # the outcome is density-dependent (fractions differ between the two densities)
     assert abs(outcomes[5] - outcomes[50]) > 1e-3

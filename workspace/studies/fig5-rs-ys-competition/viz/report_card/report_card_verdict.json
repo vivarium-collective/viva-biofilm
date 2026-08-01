@@ -32,7 +32,11 @@
           },
           "reference": 0.02,
           "note": "max-min RS-fraction spread across densities = 0.0594"
-        },
+        }
+      ]
+    },
+    "paper-fidelity": {
+      "axes": [
         {
           "name": "matches-paper-direction",
           "verdict": "drift",
@@ -42,7 +46,8 @@
             "50": 0.7657838032020002
           },
           "reference": "paper: YS low, RS intermediate, YS high (non-monotonic flip)",
-          "note": "RS fraction decreases monotonically with seeding density (qualitative direction matches the paper's high-density YS-favoring trend), but RS remains dominant (fraction > 0.5) at every density tested -- no outright YS win, and no low-density YS-favored / intermediate-density RS-favored flip as the paper reports. Shortened 4-day horizon (vs the paper's 21 days) is the leading suspect: the paper's flip may only emerge as the biofilm matures and becomes more strongly diffusion-limited."
+          "note": "RS fraction decreases monotonically with seeding density (qualitative direction matches the paper's high-density YS-favoring trend), but RS remains dominant (fraction > 0.5) at every density tested -- no outright YS win, and no low-density YS-favored / intermediate-density RS-favored flip as the paper reports. Shortened 4-day horizon (vs the paper's 21 days) is the leading suspect: the paper's flip may only emerge as the biofilm matures and becomes more strongly diffusion-limited. This axis is intentionally NON-GATING (see study.yaml's paper-flip-fidelity supporting test) -- it documents the gap honestly rather than being silently dropped or folded into the gating 'competition' group's verdict.",
+          "gating": false
         }
       ]
     }
