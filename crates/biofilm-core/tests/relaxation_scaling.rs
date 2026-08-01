@@ -105,3 +105,80 @@ fn dense_cluster_fully_separates_no_residual_overlap() {
         }
     }
 }
+
+fn cyclic_dist_x(xa: f64, xb: f64, domain_x: f64) -> f64 {
+    let mut d = xa - xb;
+    if d > domain_x / 2.0 {
+        d -= domain_x;
+    } else if d < -domain_x / 2.0 {
+        d += domain_x;
+    }
+    d.abs()
+}
+
+#[test]
+fn straddling_wrap_boundary_overlap_is_found_and_pushed_apart() {
+    // Reproduces the missed-overlap bug found by brute-force review: a
+    // fresh daughter agent from `divide_with_density` is placed at
+    // `parent.x + r*cos(angle)` WITHOUT wrapping into [0, domain_x), so on
+    // the very first `relax` iteration after a division near the wrap
+    // boundary, agent x can be transiently outside [0, domain_x). If the
+    // grid buckets cells from the *raw* (un-canonicalized) x, two agents
+    // that are genuinely overlapping under the cyclic-X metric can land in
+    // non-adjacent cells and never get checked as a candidate pair in that
+    // iteration (self-healing only kicks in on the NEXT iteration, once
+    // the end-of-iteration `rem_euclid` re-canonicalizes x -- but the
+    // overlap should have been resolved on iteration 1).
+    //
+    // Numbers below are chosen so the ratio domain_x/cell is non-integer
+    // (9.6 / 2.0 = 4.8, n_x = 4) and the buggy `cell_index_x` (no
+    // canonicalization) buckets these two agents into cell 3 and cell 1
+    // (not adjacent mod 4), while canonicalizing x by `domain_x` first
+    // buckets both into cell 0.
+    let density = 0.15;
+    let r = 1.0_f64;
+    let mass = r * r * std::f64::consts::PI * density;
+    let cell = 2.0 * r; // matches relax()'s cell = 2 * max_r
+    let domain_x = 4.8 * cell; // = 9.6; non-integer domain_x/cell ratio
+
+    let mut agents = vec![
+        Agent {
+            x: -0.5, // just outside [0, domain_x) on the low side
+            y: r,
+            mass,
+            species: 0,
+        },
+        Agent {
+            x: domain_x + 0.5, // just outside [0, domain_x) on the high side
+            y: r,
+            mass,
+            species: 0,
+        },
+    ];
+
+    let min_d = 2.0 * r;
+    let dist0 = cyclic_dist_x(agents[0].x, agents[1].x, domain_x);
+    assert!(
+        dist0 < min_d,
+        "test setup bug: agents aren't actually overlapping (dist={:.4} min_d={:.4})",
+        dist0,
+        min_d
+    );
+
+    // A single iteration: if the pair is found, push_pair moves them apart
+    // by `k * overlap` total (k=0.5, overlap=1.0 -> new dist = 1.5). If the
+    // pair is missed (the bug), nothing touches their x and dist is
+    // unchanged at 1.0.
+    relax(&mut agents, density, domain_x, 1, 0.5);
+
+    let dist = cyclic_dist_x(agents[0].x, agents[1].x, domain_x);
+    let expected = 1.5;
+    assert!(
+        (dist - expected).abs() < 1e-6,
+        "overlapping pair straddling the wrap boundary was not separated by relax() \
+         (grid must have missed it as a candidate pair): dist={:.6} expected~={:.6} (started at {:.6})",
+        dist,
+        expected,
+        dist0
+    );
+}

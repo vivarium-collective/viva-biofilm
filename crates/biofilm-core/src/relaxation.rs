@@ -40,23 +40,33 @@ fn push_pair(agents: &mut [Agent], i: usize, j: usize, density: f64, domain_x: f
 struct Grid {
     cell: f64,
     n_x: usize,
+    domain_x: f64,
     // y can be negative-ish only transiently; we offset by a bias so all
     // used y-cell indices are non-negative isize before casting to usize
     // for the row key. We store cells in a Vec<Vec<usize>> keyed by
-    // (cell_x, cell_y_bucket) via a flat map built deterministically.
-    buckets: std::collections::BTreeMap<(usize, i64), Vec<usize>>,
+    // (cell_x, cell_y_bucket) via a flat map. This is a HashMap for O(1)
+    // buckets, but it is ONLY ever touched via `.entry()`/`.get()` on
+    // exact keys -- never iterated -- so hash-order is not load-bearing
+    // and determinism is preserved (the deterministic part is the fixed
+    // (dx, dy) visit order in `neighbors_of`, not map iteration order).
+    buckets: std::collections::HashMap<(usize, i64), Vec<usize>>,
 }
 
 impl Grid {
-    fn build(agents: &[Agent], cell: f64, n_x: usize) -> Self {
-        let mut buckets: std::collections::BTreeMap<(usize, i64), Vec<usize>> =
-            std::collections::BTreeMap::new();
+    fn build(agents: &[Agent], cell: f64, n_x: usize, domain_x: f64) -> Self {
+        let mut buckets: std::collections::HashMap<(usize, i64), Vec<usize>> =
+            std::collections::HashMap::new();
         for (idx, a) in agents.iter().enumerate() {
-            let cx = cell_index_x(a.x, cell, n_x);
+            let cx = cell_index_x(a.x, cell, n_x, domain_x);
             let cy = (a.y / cell).floor() as i64;
             buckets.entry((cx, cy)).or_default().push(idx);
         }
-        Grid { cell, n_x, buckets }
+        Grid {
+            cell,
+            n_x,
+            domain_x,
+            buckets,
+        }
     }
 
     /// Deterministically ordered candidate neighbor indices (including the
@@ -64,7 +74,7 @@ impl Grid {
     /// (x, y): the 3x3 block of cells centered on it, visited in a fixed
     /// (dx, dy) order, with cyclic wrap on X.
     fn neighbors_of(&self, x: f64, y: f64) -> Vec<usize> {
-        let cx = cell_index_x(x, self.cell, self.n_x) as i64;
+        let cx = cell_index_x(x, self.cell, self.n_x, self.domain_x) as i64;
         let cy = (y / self.cell).floor() as i64;
         let mut out = Vec::new();
         for dy in -1..=1i64 {
@@ -80,8 +90,20 @@ impl Grid {
     }
 }
 
-fn cell_index_x(x: f64, cell: f64, n_x: usize) -> usize {
-    let raw = (x / cell).floor() as i64;
+/// Bucket index for `x` along the X axis. `x` may be transiently outside
+/// `[0, domain_x)` (e.g. a freshly-divided daughter agent placed at
+/// `parent.x + r*cos(angle)` before the end-of-iteration wrap runs), so we
+/// canonicalize into `[0, domain_x)` via `rem_euclid` FIRST, before
+/// dividing by `cell`. Skipping this step means an off-canonical x can
+/// floor-divide to a raw cell index that differs from its canonical
+/// counterpart by exactly `n_x` (or more), which then survives the
+/// `rem_euclid(n_x)` wrap as a *different* bucket than the canonical
+/// position would use -- silently missing genuinely-overlapping pairs that
+/// straddle the wrap boundary whenever `domain_x` isn't an exact multiple
+/// of `cell`.
+fn cell_index_x(x: f64, cell: f64, n_x: usize, domain_x: f64) -> usize {
+    let canon = x.rem_euclid(domain_x);
+    let raw = (canon / cell).floor() as i64;
     raw.rem_euclid(n_x as i64) as usize
 }
 
@@ -102,7 +124,7 @@ pub fn relax(agents: &mut Vec<Agent>, density: f64, domain_x: f64, iters: usize,
         let cell = (2.0 * max_r).max(1e-9);
         let n_x = ((domain_x / cell).floor() as usize).max(1);
 
-        let grid = Grid::build(agents, cell, n_x);
+        let grid = Grid::build(agents, cell, n_x, domain_x);
 
         for i in 0..n {
             let (xi, yi) = (agents[i].x, agents[i].y);
