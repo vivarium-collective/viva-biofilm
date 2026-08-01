@@ -48,6 +48,30 @@ const SECONDS_PER_DAY: f64 = 86_400.0;
 /// pg/µm³ -> g/m³ (1 µm³ = 1e-18 m³, 1 pg = 1e-12 g -> 1 pg/µm³ = 1e6 g/m³).
 const PG_PER_UM3_TO_G_PER_M3: f64 = 1.0e6;
 
+/// Safety cap on the per-macro-step sink<->solve Picard coupling loop (see
+/// `step`'s stage 1+2 note below). Gentle kinetics converge in ~1 inner
+/// iteration; this bounds the cost of stiff/pathological kinetics that
+/// converge slowly.
+const MAX_COUPLING_ITERS: usize = 20;
+/// Convergence threshold (g/m³) for the sink<->solve Picard loop: the max
+/// absolute per-cell concentration change between successive inner
+/// iterations must drop below this before the loop is considered converged.
+const COUPLING_TOL: f64 = 1.0e-3;
+/// Under-relaxation factor for the sink<->solve Picard update: each inner
+/// iterate blends `COUPLING_RELAXATION` of the freshly solved candidate
+/// field with `1 - COUPLING_RELAXATION` of the pre-solve field, rather than
+/// taking the full Picard step. Required for stability: under Table-K-stiff
+/// kinetics (steep Monod response, small Ks relative to bulk) the undamped
+/// map `C -> solve(sink(C))` has its own period-2 orbit (empirically
+/// verified) rather than converging, which both prevents the loop from ever
+/// reaching `COUPLING_TOL` and — because `MAX_COUPLING_ITERS` is even —
+/// deterministically strands the field on the unconstrained/"replenished"
+/// phase every step, defeating the whole point of the coupling fix. 0.5 is
+/// a standard, conservative damping factor for Picard/successive-
+/// substitution iteration on strongly nonlinear reactive feedback; it does
+/// not change the fixed point, only the (now convergent) path to it.
+const COUPLING_RELAXATION: f64 = 0.5;
+
 /// Newborn agents placed by `spawn_distributed` start at
 /// `min(division_mass / 2, DISTRIBUTED_SEED_MASS_CAP)`. `spawn_agents` (the
 /// old single-species path) keeps its original, uncapped `division_mass / 2`
@@ -368,13 +392,13 @@ impl World {
 
     // ---- Simulation step -----------------------------------------------
 
-    pub fn step(&mut self, dt: f64) {
-        let ncell = self.grid.nx * self.grid.ny;
-        // 1. accumulate per-cell sink for each solute (g/m³/day); each agent
-        //    consumes/produces according to its OWN species' reactions, but
-        //    every agent's contribution lands in the same shared sink array
-        //    (one substrate field, however many strategies are competing for
-        //    it).
+    /// Accumulate the per-cell, per-solute sink (g/m³/day) from the CURRENT
+    /// solute field: each agent consumes/produces according to its OWN
+    /// species' reactions, but every agent's contribution lands in the same
+    /// shared sink array (one substrate field, however many strategies are
+    /// competing for it). Iterates `self.agents` in order (deterministic).
+    /// Called once per inner Picard iteration in `step` (see its comment).
+    fn build_sinks(&self, ncell: usize) -> Vec<Vec<f64>> {
         let mut sinks: Vec<Vec<f64>> = self.solutes.iter().map(|_| vec![0.0; ncell]).collect();
         let cell_vol = self.grid.dx * self.grid.dx; // µm² (2D, unit depth)
         for a in &self.agents {
@@ -396,17 +420,74 @@ impl World {
                 }
             }
         }
-        // 2. solve each solute field to steady state (unchanged)
-        for (k, f) in self.solutes.iter_mut().enumerate() {
-            crate::grid::solve_steady_state(
-                f,
-                &self.grid,
-                &sinks[k],
-                f.bulk,
-                self.pde_omega,
-                self.pde_tol,
-                self.pde_max_iter,
-            );
+        sinks
+    }
+
+    pub fn step(&mut self, dt: f64) {
+        let ncell = self.grid.nx * self.grid.ny;
+        // 1+2. Iterate sink<->solve to self-consistency (damped Picard fixed
+        //    point) before growth reads the field. Each inner pass rebuilds
+        //    the per-cell sink from the CURRENT solute field (same per-agent
+        //    Monod sink math as before, factored into `build_sinks`), solves
+        //    each solute to steady state (warm-started from the running
+        //    field, as before), then blends the solved candidate back toward
+        //    the pre-solve field by `COUPLING_RELAXATION`. Recomputing the
+        //    sink once and solving once — reading last step's leftover field
+        //    — lags sink and field one macro-step apart; under stiff
+        //    kinetics that lag forms a period-2 oxygen limit cycle that
+        //    defeats Monod substrate limitation (see the Task-1 coupling
+        //    brief). Plain (undamped) Picard iteration does not fix this on
+        //    its own: under Table-K-stiff kinetics the sink is a steep
+        //    function of concentration (Ks small relative to bulk), so the
+        //    undamped map `C -> solve(sink(C))` itself has a period-2 orbit
+        //    (verified empirically: sink swings ~1e3 vs ~1e6 g/m^3/day every
+        //    other inner iteration, never damping, exhausting
+        //    MAX_COUPLING_ITERS every step) — it just moves the same
+        //    oscillation one level in, and because MAX_COUPLING_ITERS is
+        //    even the loop always exits on the "replenished" (unconstrained)
+        //    phase, making the runaway *worse* than the original bug (every
+        //    step gets an unconstrained growth pulse instead of every other
+        //    step). Under-relaxing the update — standard for Picard/
+        //    successive-substitution iteration on strongly nonlinear
+        //    reactive feedback — damps that orbit so the iteration actually
+        //    converges to the true self-consistent partial-depletion fixed
+        //    point. `C_{k+1} = C_k + COUPLING_RELAXATION * (solve(sink(C_k))
+        //    - C_k)`, capped at `MAX_COUPLING_ITERS`, converged when the max
+        //    per-cell change drops below `COUPLING_TOL`. This does not
+        //    change the fixed point itself (only the convergence path), so
+        //    gentle kinetics (which already have a stable, fast-converging
+        //    map) still converge in a handful of cheap inner iterations to
+        //    the same physical answer.
+        let mut prev_conc: Vec<Vec<f64>> = self.solutes.iter().map(|f| f.conc.clone()).collect();
+        for _coupling_iter in 0..MAX_COUPLING_ITERS {
+            let sinks = self.build_sinks(ncell);
+            for (k, f) in self.solutes.iter_mut().enumerate() {
+                crate::grid::solve_steady_state(
+                    f,
+                    &self.grid,
+                    &sinks[k],
+                    f.bulk,
+                    self.pde_omega,
+                    self.pde_tol,
+                    self.pde_max_iter,
+                );
+                for c in 0..ncell {
+                    f.conc[c] = prev_conc[k][c] + COUPLING_RELAXATION * (f.conc[c] - prev_conc[k][c]);
+                }
+            }
+            let mut max_delta: f64 = 0.0;
+            for (k, f) in self.solutes.iter().enumerate() {
+                for c in 0..ncell {
+                    let d = (f.conc[c] - prev_conc[k][c]).abs();
+                    if d > max_delta {
+                        max_delta = d;
+                    }
+                }
+                prev_conc[k].copy_from_slice(&f.conc);
+            }
+            if max_delta < COUPLING_TOL {
+                break;
+            }
         }
         // 3. grow agents at their local concentrations, by their own species'
         //    reactions (this is where Rate- vs Yield-Strategist divergence
