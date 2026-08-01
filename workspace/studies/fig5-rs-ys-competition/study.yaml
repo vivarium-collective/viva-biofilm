@@ -17,37 +17,48 @@ report:
   title: RS vs YS competition
   verdict: partial
   confidence: medium
-  evidence_quality: deterministic single-seed runs per density (3 densities, no statistical ensemble; shortened horizon, see caveat below)
+  evidence_quality: deterministic single-seed runs per density (3 densities, no statistical ensemble; the paper's FULL 21-day / 504-step horizon)
   objective: |
     Run the paper's exact Table-K RS/YS Monod kinetics head-to-head at the
-    paper's three seeding densities (5, 10, 50 agents per strategy),
-    measure the final RS biomass fraction at each, and honestly compare the
-    density trend against the paper's reported (non-monotonic) direction.
+    paper's three seeding densities (5, 10, 50 agents per strategy) over the
+    paper's full 21-day horizon, measure the final RS biomass fraction at
+    each, and honestly compare the density trend against the paper's reported
+    (non-monotonic) direction.
   result: |
-    At n_each=5/10/50 (dt=1/24 d, 4.0-day horizon — see fidelity caveat), the
-    final RS biomass fraction was 0.825 / 0.822 / 0.766 respectively: RS
-    dominates at every density tested, but its margin shrinks monotonically
-    as seeding density rises — a real, measurable (~0.06) density-dependent
-    effect, in the SAME direction as the paper's high-density YS-favoring
-    trend, but without the paper's low-density YS win or the intermediate-
-    density flip. Both strategies persisted at every density through the
-    full run.
+    At n_each=5/10/50 (dt=1/24 d, the paper's full 21-day / 504-step horizon),
+    the final RS biomass fraction was 0.382 / 0.539 / 0.619 respectively. The
+    winner REVERSES with seeding density: YS wins outright at low density
+    (RS 0.382), RS wins at intermediate (0.539) and high (0.619) density — a
+    genuine density-dependent winner reversal. RS fraction rises monotonically
+    with density (YS-RS-RS), so we reproduce the paper's low-density-YS and
+    intermediate-density-RS legs but NOT its non-monotonic re-flip back to YS
+    at high density (paper: YS-RS-YS). The time-trajectories show the
+    rate-vs-yield mechanism directly: RS surges early (its rate advantage
+    while oxygen is abundant — n=5 rises to RS 0.71 by day 2) then YS gains as
+    the biofilm matures and becomes oxygen-limited (its yield advantage —
+    n=5 falls to 0.38 by day 21). Both strategies persist at every density;
+    biofilm thickness stays bounded (~10-16 um) under surface-erosion
+    detachment.
   interpretation: |
-    The competition CAPABILITY (per-species kinetics, distributed seeding at
-    density, per-strategy population/biomass tracking) reproduces cleanly and
-    the outcome IS density-dependent, in a direction that partially agrees
-    with the paper (YS gains ground as density increases). It does not
-    reproduce the paper's full non-monotonic flip or its low-density YS win
-    — plausibly because of the shortened observation horizon (4 days vs the
-    paper's 21) rather than a modeling error, since RS's fraction is still
-    visibly declining with density at the horizon's end. This is graded
-    honestly (see report_card_verdict): "matches-paper-direction" is drift,
-    not within_tol.
+    This is a substantially stronger reproduction than the earlier shortened
+    (4-day) run, which showed RS dominant at every density with no YS win at
+    all. Two engine fixes made the paper's full 21-day horizon tractable and
+    physical: an O(n) neighbor-grid relaxation, and a CONVERGED
+    reaction-diffusion coupling that makes the Monod oxygen limitation
+    actually bite, so the population self-limits (grows ~linearly, not
+    exponentially to ~10^5 agents). With them, the competition genuinely
+    reproduces the paper's CORE finding — seeding density decides the winner
+    (YS at low density, RS at intermediate/high). It does not reproduce the
+    paper's exact non-monotonic YS-RS-YS shape (we get monotonic YS-RS-RS,
+    missing the high-density re-flip), plausibly because of our 2D
+    single-oxygen simplification vs the paper's fuller multi-substrate/FbM
+    setup and geometry differences — graded honestly as drift on its own
+    non-gating axis, not folded into the passing groups.
 study_card:
   phase: Simulate / Evaluate
-  one_liner: "RS wins at all 3 densities, but its margin shrinks with density (0.825 -> 0.766) -- real but partial density-dependence."
+  one_liner: "Over the full 21-day horizon the winner reverses with density: YS wins at low density (RS 0.382), RS at intermediate/high (0.539/0.619) -- reproduces the paper's density-dependent winner (monotonic, not the exact non-monotonic re-flip)."
   status: complete
-  headline: "PARTIAL — density-dependent, but doesn't reproduce the paper's non-monotonic flip."
+  headline: "PARTIAL (strong) — density-dependent winner reversal reproduced over the full 21-day horizon; not the paper's exact non-monotonic re-flip."
 conditions:
   baseline:
     composite: viva_biofilm.composites.competition.competition
@@ -56,36 +67,30 @@ conditions:
   model_settings:
   - {name: table-k-kinetics, detail: "RS mu_max=3.9398/d Kox=0.6 yield=-43.478; YS mu_max=1.9699/d Kox=0.3 yield=-21.739; density=0.1363 pg/um^3; division_mass=0.08 pg -- DERIVED from Cockx 2024 S1 Text Table K (Kreft 2004 coccoid kinetics): mu_max=Vmax*Yx*24 (h->day), O2-per-biomass=Yox/Yx; density & Kox verbatim. Table K is nominally the 3D table, but its coccoid RS/YS kinetics are the same Kreft-2004 values used for the 2D Fig 5 case."}
   - {name: density-sweep, detail: "n_each in [5, 10, 50] agents per strategy, distributed/alternating seeding, seed=3"}
-  - {name: shortened-horizon, detail: "dt=1/24 d (paper's own 1h timestep, unchanged); N_STEPS=96 (4.0 d) instead of the paper's 504 steps / 21 d -- see fidelity caveat in narrative"}
+  - {name: full-horizon, detail: "dt=1/24 d (paper's 1h timestep); N_STEPS=504 = the paper's FULL 21-day horizon. Made tractable by the O(n) neighbor-grid relaxation + a converged reaction-diffusion coupling (population self-limits instead of exploding to ~10^5 agents); ~12 s per density."}
+  - {name: detachment, detail: "detachment_rate=0.02 (Wanner-Gujer height-proportional surface erosion) bounds biofilm thickness to a physical steady state (~10-16 um over 21 d)."}
 narrative:
   fidelity_caveats:
   - |
-    Horizon: the paper runs to 21 days (504 steps at dt=1/24 d). Under the
-    exact Table-K kinetics, population grows near-exponentially early on
-    (e.g. n_each=50 reaches ~2,400 agents by day 4) and this engine's
-    agent-relaxation ("shoving") pass is O(n^2) per step. A full 504-step
-    run at n_each=50 was timed and killed after several minutes without
-    reaching even a quarter of the horizon -- far outside a reasonable
-    runtime budget for this study. We report a genuinely shortened 4.0-day
-    (96-step) horizon instead, with the paper's dt (1 hour) and all
-    Table-K parameter values UNCHANGED -- only the observation window is
-    shorter. UPDATE (fuller-horizon test): after an O(n) neighbor-grid
-    relaxation made longer runs tractable, we ran n_each=50 out to ~7.5 days
-    and the horizon hypothesis was DISPROVED -- the RS biomass fraction climbs
-    monotonically (0.573, 0.684, 0.787, 0.862, 0.914, 0.946 at days
-    1.2/2.5/3.8/5.0/6.2/7.5), i.e. RS runs *further* away rather than flipping
-    to YS. So the missing flip is NOT a horizon artifact. Two model gaps
-    explain it: (1) growth is not realistically substrate-limited at this
-    density -- the population grows near-unbounded (~218k agents by day 7.5 in
-    a 200 um domain), so oxygen never becomes limiting and YS's higher yield
-    never confers an advantage; and (2) this engine lacks the force-based
-    mechanics (FbM) + spatial surface-escape dynamics the paper's YS-win
-    depends on. Reproducing the flip requires those (the Fig 6 / FbM
-    machinery) plus realistic substrate-limitation/detachment -- not more
-    simulated days.
+    High-density re-flip (the main remaining gap): the paper reports a
+    NON-MONOTONIC density dependence (YS at low, RS at intermediate, YS again
+    at high). Over the paper's full 21-day horizon we reproduce the
+    low-density YS win and the intermediate-density RS win -- a real
+    density-dependent winner reversal -- but our trend is MONOTONIC (YS-RS-RS):
+    RS fraction keeps rising with density (0.382 -> 0.539 -> 0.619) rather than
+    re-flipping to YS at the highest density. Graded honestly as drift on its
+    own non-gating axis (paper-flip-fidelity), not folded into the passing
+    groups. Note this SUPERSEDES the earlier study's "shortened-horizon"
+    caveat: the full 21-day horizon is now run (the O(n) relaxation + converged
+    reaction-diffusion coupling made it tractable, and the coupling fix also
+    made growth genuinely substrate-limited so the population no longer
+    explodes to ~10^5 agents), and the density-dependent winner change the
+    4-day run missed DOES appear -- just monotonically.
   - |
     Substrate: only oxygen is modeled (single limiting solute), matching
-    Kreft 2004 / the paper's simplification for this figure.
+    Kreft 2004 / the paper's simplification for this figure. The paper's
+    fuller multi-substrate and force-based (FbM) mechanics -- candidate
+    contributors to the high-density re-flip -- are out of scope here.
   - |
     Mechanics: the paper's 2D Fig. 5 uses shoving (BacSim) mechanics, which
     is what this engine also uses; the paper's separate force-based (FbM)
@@ -95,11 +100,9 @@ narrative:
     40 um boundary layer) of the paper's setup; the exact BacSim domain
     aspect ratio is not tabulated in the supplement.
   - |
-    This study reproduces the multi-strategy competition CAPABILITY and a
-    genuine (if partial) density-dependent qualitative finding; an exact
-    quantitative match to the paper's density-flip is explicitly out of
-    scope without a full FbM/BacSim-equivalent setup and the paper's
-    original 21-day horizon.
+    Statistics: one deterministic seed per density (no ensemble). The engine
+    is deterministic; a stochastic ensemble would be needed to put error bars
+    on the fractions.
 tests:
 - name: density-dependent-competition
   classification: primary
@@ -111,29 +114,42 @@ tests:
   notes: |
     GATES on the `competition` report-card group, which contains ONLY the
     two axes that genuinely reproduce (both-strategies-simulated,
-    outcome-is-density-dependent — both within_tol). The paper's exact
-    non-monotonic density-flip is a SEPARATE, explicitly non-gating axis
-    (see the paper-flip-fidelity test below) — deliberately excluded from
-    this group so this test's `passed` status is not an overclaim (a
-    report_card_axis group's verdict is its worst axis; folding the
-    drift-graded flip axis in here would make this group not-within_tol).
-- name: paper-flip-fidelity
+    outcome-is-density-dependent — both within_tol; RS-fraction spread ~0.24
+    across densities). The paper's exact non-monotonic density-flip and the
+    winner-reversal finding are SEPARATE, explicitly non-gating groups (see
+    the two supporting tests below) — kept out of this group so this test's
+    `passed` status is not an overclaim (a report_card_axis group's verdict
+    is its worst axis).
+- name: density-changes-the-winner
   classification: supporting
-  status: failed
-  question: "Does the density trend reproduce the paper's exact non-monotonic RS/YS flip (YS low, RS intermediate, YS high)?"
-  measure: {kind: report_card_axis, card: workspace/studies/fig5-rs-ys-competition/viz/report_card, group: paper-fidelity}
+  status: passed
+  question: "Over the full 21-day horizon, does seeding density change WHICH strategy wins (the paper's core finding)?"
+  measure: {kind: report_card_axis, card: workspace/studies/fig5-rs-ys-competition/viz/report_card, group: winner-reversal}
   pass_if: {op: verdict_at_least, level: within_tol}
   cites: [cockx2024]
   notes: |
-    HONEST, NON-GATING readout: graded drift, not within_tol (RS fraction
-    declines monotonically with density in the paper's high-density
-    YS-favoring direction, but never crosses 0.5 at any tested density, so
-    the paper's low-density YS win / intermediate-density RS win / flip is
-    not reproduced within the study's shortened 4-day horizon). This test
-    is `classification: supporting`, not `primary` — it does NOT gate
-    pipeline_gate or the study's pass/fail status; it exists so the gap is
-    reported explicitly rather than silently dropped or folded into the
-    gating `competition` group above.
+    PASSES (within_tol): YS wins at low density (n=5, RS 0.382), RS wins at
+    intermediate and high density (0.539 / 0.619) — a genuine density-
+    dependent winner reversal that reproduces the paper's central "seeding
+    density decides the winner" phenomenon over its full 21-day horizon.
+    Non-gating (supporting), but a real, honest win: the earlier 4-day run
+    reproduced no YS win at any density.
+- name: paper-flip-fidelity
+  classification: supporting
+  status: failed
+  question: "Does the density trend reproduce the paper's EXACT non-monotonic RS/YS flip (YS low, RS intermediate, YS high)?"
+  measure: {kind: report_card_axis, card: workspace/studies/fig5-rs-ys-competition/viz/report_card, group: exact-flip}
+  pass_if: {op: verdict_at_least, level: within_tol}
+  cites: [cockx2024]
+  notes: |
+    HONEST, NON-GATING readout, graded drift: we get a MONOTONIC YS-RS-RS
+    trend (RS fraction 0.382 -> 0.539 -> 0.619), reproducing the low->
+    intermediate winner flip but NOT the paper's high-density re-flip back to
+    YS. Candidate reasons: 2D single-oxygen simplification vs the paper's
+    fuller multi-substrate/FbM setup, and domain/geometry differences. This
+    test is `classification: supporting`, not `primary` — it does NOT gate
+    pipeline_gate or the study's pass/fail status; it documents the remaining
+    gap explicitly rather than silently dropping it.
 visualizations:
 - name: outcome vs seeding density
   address: image:charts/outcome_vs_density.png

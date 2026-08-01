@@ -27,8 +27,8 @@ report:
     0.5 g/m^3 (reference 0.5) through the t=1d-3d low window and restored to
     8.74 g/m^3 (reference 8.74) after. Over the same 4-day, same-seed window,
     the perturbed biofilm's growth was visibly suppressed relative to the
-    control: final population 60 vs. 120 agents, final total biomass 11.50
-    pg vs. 20.04 pg (biomass ratio 0.574) -- a clear, measurable response to
+    control: final population 60 vs. 120 agents, final total biomass 11.58
+    pg vs. 20.08 pg (biomass ratio 0.577) -- a clear, measurable response to
     the runtime boundary perturbation.
   interpretation: |
     The Task 6 runtime boundary hook and the Task 7 controller process
@@ -40,7 +40,7 @@ report:
     the single-process biofilm/chemostat composites.
 study_card:
   phase: Simulate / Evaluate
-  one_liner: "Controller-driven oxygen dip -> 60 vs 120 final agents (control); biomass ratio 0.574."
+  one_liner: "Controller-driven oxygen dip -> 60 vs 120 final agents (control); biomass ratio 0.577."
   status: complete
   headline: "PASS — controller drove the boundary exactly, biofilm growth visibly responded."
 conditions:

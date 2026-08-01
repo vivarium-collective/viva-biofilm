@@ -14,11 +14,11 @@
         {
           "name": "biofilm-responds",
           "verdict": "within_tol",
-          "value": 11.498677081706408,
-          "reference": 20.04076152720758,
+          "value": 11.58384396727176,
+          "reference": 20.0785281008016,
           "perturbed_population": 60,
           "control_population": 120,
-          "biomass_ratio": 0.5737644782657418
+          "biomass_ratio": 0.5769269494813863
         }
       ]
     }

@@ -22,7 +22,7 @@ report:
     validation.
   result: |
     From 40 seed agents, 150 steps (dt=0.05 d) at a 32x48 grid grew the colony
-    to 640 agents with a biofilm thickness of 12.1 um. The solute field shows
+    to 640 agents with a biofilm thickness of 11.7 um. The solute field shows
     a clear substrate-limitation gradient: substratum-third mean 0.438 g/m^3
     vs boundary-third mean 0.894 g/m^3 (ratio 0.49) — the biofilm is
     demonstrably drawing down substrate near the surface it consumes it at.
@@ -33,7 +33,7 @@ report:
     reproducibly in seconds rather than minutes.
 study_card:
   phase: Simulate / Evaluate
-  one_liner: "40 agents -> 640-agent biofilm, 12.1 um thick, with a real substrate gradient."
+  one_liner: "40 agents -> 640-agent biofilm, 11.7 um thick, with a real substrate gradient."
   status: complete
   headline: "PASS — grown, developed, substrate-limited."
 conditions:

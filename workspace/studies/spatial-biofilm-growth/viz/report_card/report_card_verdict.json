@@ -12,26 +12,26 @@
         {
           "name": "thickness-positive",
           "verdict": "within_tol",
-          "value": 12.137436564496111,
+          "value": 11.708952752675119,
           "reference": 0.0
         },
         {
           "name": "substrate-gradient-present",
           "verdict": "within_tol",
-          "value": 0.4899117694059533,
+          "value": 0.4900000587272287,
           "reference": 0.7,
-          "substratum_mean": 0.4378036711742816,
-          "boundary_mean": 0.8936377905457225
+          "substratum_mean": 0.4378959296073626,
+          "boundary_mean": 0.8936650553569195
         },
         {
           "name": "substrate-penetration",
           "verdict": "within_tol",
-          "value": 0.4899117694059533,
+          "value": 0.4900000587272287,
           "reference": "0.3-0.7 (expected partial-penetration band)",
           "band_low": 0.3,
           "band_high": 0.7,
-          "substratum_mean": 0.4378036711742816,
-          "boundary_mean": 0.8936377905457225,
+          "substratum_mean": 0.4378959296073626,
+          "boundary_mean": 0.8936650553569195,
           "note": "Consistency check vs. expected reaction-diffusion substrate-limitation behavior (boundary richer than substratum, but not fully depleted) -- not a fit to a specific analytic or reference-engine value."
         }
       ]

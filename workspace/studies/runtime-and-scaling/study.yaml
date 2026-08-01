@@ -20,36 +20,43 @@ report:
     per-point step counts, and produce interactive scaling curves alongside
     a throughput summary.
   result: |
-    Grid sweep (40 agents, 40 steps): 0.198 ms/step at 512 cells (16x32) to
-    3.189 ms/step at 12288 cells (96x128) -- sub-linear-to-linear growth in
-    cells, no configuration slow (<30s threshold). Population sweep (grid
-    48x64, 40 steps): 0.219 ms/step at 20 final agents to 2.387 ms/step at
-    320 final agents. Duration sweep (grid 48x64, 40 agents): total wall time
-    0.014s at 20 steps to 0.669s at 160 steps; a linear fit of total time vs.
-    steps gives R^2=0.907 -- close to linear but not exact, because
-    population grows via division over the course of a run (40 -> 640
-    agents over 160 steps), which compounds per-step cost as the run
-    lengthens. Absolute throughput is single-threaded and machine-load-
-    dependent: the per-step timings above and a peak of ~3e5 agent-steps/sec
-    were measured on an unloaded machine, while the same sweeps re-run under
-    heavy concurrent load recorded ~1.4e4 agent-steps/sec. The robust,
-    hardware-independent result is the SCALING SHAPE above, not the absolute
-    rate; a clean re-run on an idle machine is needed for a representative
-    peak figure.
+    Measured AFTER the reaction-diffusion coupling was made to converge
+    (~5-7 inner PDE solves per step, under-relaxation w=0.2), which raised
+    per-step cost relative to the earlier single-solve engine -- an
+    intentional correctness trade (see interpretation). Grid sweep (40
+    agents, 40 steps): 0.99 ms/step at 512 cells (16x32) to 16.97 ms/step at
+    12288 cells (96x128) -- sub-quadratic growth in cells, no configuration
+    slow (<30s threshold; worst case 0.68s). Population sweep (grid 48x64, 40
+    steps): 1.13 ms/step at 20 final agents to 8.26 ms/step at 320 final
+    agents. Duration sweep (grid 48x64, 40 agents): total wall time 0.086s at
+    20 steps to 1.06s at 160 steps; a linear fit of total time vs. steps gives
+    R^2=0.987 -- close to linear, with the small deviation because population
+    grows via division over a run (40 -> 640 agents over 160 steps), which
+    compounds per-step cost as the run lengthens. Peak throughput on this run
+    was ~6.0e4 agent-steps/sec (single-threaded, machine-load-dependent);
+    the robust, hardware-independent result is the SCALING SHAPE above, not
+    the absolute rate.
   interpretation: |
-    The engine is fast and its scaling is well-behaved: no configuration in
-    any of the three fixed sweeps approached the 30s slow threshold (worst
-    case 0.13s for the largest grid, 0.67s for the longest duration run).
-    Grid and population scaling both show a clear, roughly proportional cost
-    increase with problem size. Duration scaling is "near-linear" rather
-    than exactly linear -- the R^2=0.907 fit reflects a genuine effect (later
-    steps cost more because the population has grown), not measurement
-    noise, and is reported here rather than smoothed over.
+    Scaling is well-behaved: no configuration in any of the three fixed sweeps
+    approached the 30s slow threshold (worst case 0.68s for the largest grid).
+    Grid and population scaling both show a clear, sub-quadratic cost increase
+    with problem size; duration scaling is near-linear (R^2=0.987, the
+    deviation a genuine population-growth effect, not noise). Per-step cost is
+    HIGHER than the pre-coupling-fix engine because the reaction-diffusion
+    sink<->solve now iterates to self-consistency each step instead of using a
+    single lagged solve -- the fix that removed a period-2 oxygen limit cycle
+    and made the Monod substrate limitation actually bite. This micro-benchmark
+    uses gentle kinetics at small fixed scale, so it sees ONLY that per-step
+    overhead. For realistic stiff-kinetics workloads the same fix is a large
+    NET speedup, not a slowdown: it bounds the otherwise near-exponential
+    population (e.g. the RS-vs-YS competition went from unbounded ~10^5 agents
+    / killed-after-minutes to ~4k agents / ~12s over the full 21-day horizon),
+    because runtime there is dominated by agent count, not per-step PDE cost.
 study_card:
   phase: Simulate / Evaluate
-  one_liner: "Single-threaded throughput ~1.4e4-3e5 agent-steps/sec (machine-load-dependent); grid/population/duration scaling curves all produced, no slow configs."
+  one_liner: "Well-behaved sub-quadratic grid/population scaling + near-linear duration (R^2=0.987), peak ~6e4 agent-steps/sec; per-step cost reflects the converged reaction-diffusion coupling, a net win on realistic (population-bounding) workloads."
   status: complete
-  headline: "PASS — fast, well-scaling, throughput measured."
+  headline: "PASS — well-scaling; per-step cost is the converged-coupling correctness trade, a large net win at realistic scale."
 conditions:
   baseline:
     composite: viva_biofilm.composites.biofilm.biofilm
@@ -91,7 +98,7 @@ embed_visualizations:
   description: Total wall time vs. step count; near-linear, with the deviation explained by population growth during longer runs.
 - name: "Throughput (interactive)"
   url: /reports/figures/runtime-and-scaling/throughput.html
-  description: Agent-steps/sec across the grid and population sweeps; peak ~303,000 agent-steps/sec.
+  description: Agent-steps/sec across the grid and population sweeps; peak ~60,000 agent-steps/sec (single-threaded, load-dependent).
 runs: []
 pipeline_gate:
   prerequisites: [spatial-biofilm-growth]

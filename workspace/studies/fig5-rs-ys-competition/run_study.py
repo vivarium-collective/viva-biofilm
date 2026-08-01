@@ -6,18 +6,17 @@ paper's three seeding densities (5, 10, 50 agents per strategy), renders the
 outcome, and writes a report-card verdict for the study's ``competition``
 test group.
 
-FIDELITY CAVEAT — horizon: the paper runs to 21 days (504 steps at
-dt=1/24 d). Table-K's fast kinetics + tiny division_mass (0.08 pg) drive
-near-exponential early population growth (e.g. n_each=50 reaches ~2400
-agents by day 4), and this engine's agent-relaxation ("shoving") pass is
-O(n^2) per step. A full 504-step run at n_each=50 was timed and killed after
-several minutes without completing even a quarter of the horizon — clearly
-outside the study's ~10-minute runtime budget. We use a SHORTER horizon
-instead: dt=1/24 d (the paper's own Delta-t = 1 hour, unchanged) for
-N_STEPS steps (see below) — keeping the paper's PARAMETER values exactly as
-given (nothing in competition_spec's RS/YS kinetics is altered), only the
-observation WINDOW is shortened. See the study.yaml narrative for how this
-bears on the result's fidelity to the paper's exact density-flip finding.
+HORIZON — the paper's FULL 21 days (504 steps at dt=1/24 d, the paper's own
+Delta-t = 1 hour). This became tractable after two engine fixes: (1) an O(n)
+neighbor-grid relaxation (was O(n^2) all-pairs shoving), and (2) a converged
+reaction-diffusion coupling that made the Monod oxygen limitation actually
+bite, so the population self-limits (grows ~linearly, not exponentially)
+instead of exploding to ~10^5 agents. With both, all three densities run to
+the full 21-day horizon in ~10-12 s each (~35 s total). Nothing in
+competition_spec's RS/YS Table-K kinetics is altered; a physically-motivated
+surface-erosion detachment (detachment_rate) bounds biofilm thickness. See
+the study.yaml narrative for how the full-horizon result bears on the paper's
+density-flip finding.
 """
 import json
 import pathlib
@@ -37,8 +36,8 @@ EMBED_DIR = HERE.parents[2] / "reports" / "figures" / "fig5-rs-ys-competition"
 DENSITIES = [5, 10, 50]
 SEED = 3
 DT = 1 / 24        # paper's Delta-t = 1 hour (unchanged)
-N_STEPS = 96       # 4.0 days -- SHORTENED from the paper's 21 d / 504 steps; see module docstring.
-SNAPSHOT_EVERY = 12  # 0.5 day resolution for the time-series chart
+N_STEPS = 504      # 21.0 days -- the paper's FULL horizon (504 steps at dt=1/24 d); see docstring.
+SNAPSHOT_EVERY = 24  # 1.0 day resolution for the time-series chart
 
 CHART_STEMS = ["outcome_vs_density", "colony_density5", "colony_density50", "fraction_over_time"]
 
@@ -90,20 +89,25 @@ def fraction_over_time_figure(runs: dict[int, list[dict]]) -> go.Figure:
 
 
 def build_verdict(runs: dict[int, list[dict]], outcomes: list[dict]) -> dict:
-    """Two report-card GROUPS, deliberately separated so the gating test only
-    depends on axes that genuinely reproduce:
+    """Three report-card GROUPS, deliberately separated so the gating test only
+    depends on axes that genuinely reproduce, while the honest wins and gaps
+    against the paper are each surfaced on their own (non-gating) axis:
 
     - ``competition`` (GATING): both-strategies-simulated + outcome-is-
-      density-dependent. Both within_tol here -- this is what the study's
-      primary test gates on, and it's an honest pass: the multi-strategy
-      competition capability works and its outcome IS density-dependent.
-    - ``paper-fidelity`` (NON-GATING): matches-paper-direction alone. A
-      report_card_axis group's verdict is its WORST axis, so folding a
-      drift-graded axis into ``competition`` would make that group's
-      (and thus the primary test's) verdict not-within_tol -- an
-      overclaim in the opposite direction if left `passed` anyway. Kept
-      separate, honestly graded drift, reported via a second SUPPORTING
-      (non-blocking) test in study.yaml rather than silently dropped.
+      density-dependent. Both within_tol -- the multi-strategy competition
+      capability works and its outcome IS density-dependent (spread ~0.24).
+    - ``winner-reversal`` (NON-GATING, PASSES): density-changes-the-winner.
+      Over the paper's full 21-day horizon YS wins at low density and RS wins
+      at intermediate/high -- a genuine density-dependent winner reversal that
+      reproduces the paper's CORE finding (seeding density decides the winner).
+    - ``exact-flip`` (NON-GATING, drift): matches-paper-non-monotonic-flip.
+      We get a MONOTONIC YS-RS-RS trend, not the paper's non-monotonic
+      YS-RS-YS (no high-density re-flip). Graded drift, honestly, and kept in
+      its own group so it neither inflates the wins nor gates the study.
+
+    A report_card_axis group's verdict is its WORST axis, so separating these
+    keeps each test's pass/fail honest rather than folding a drift axis into a
+    passing group (or vice-versa).
     """
     fractions = {r["n_each"]: r["rs_fraction"] for r in outcomes}
     spread = max(fractions.values()) - min(fractions.values())
@@ -124,34 +128,47 @@ def build_verdict(runs: dict[int, list[dict]], outcomes: list[dict]) -> dict:
     else:
         density_verdict = "mismatch"
 
-    # Axis 3 (separate, NON-GATING group): HONEST grading against the
-    # paper's reported direction. Cockx 2024 Fig 5 reports YS favored at
-    # low density, RS at intermediate density, YS favored again at high
-    # density (a non-monotonic flip). Our measured trend: RS dominates
-    # (fraction > 0.5) at ALL three densities, monotonically DECREASING
-    # with density (5 -> 10 -> 50) -- i.e. YS gains relative ground as
-    # density rises (partial directional agreement with the paper's
-    # high-density YS-favoring direction), but RS never loses outright at
-    # any density and there is no low-density YS win or flip.
+    # Axis 3 group (separate, NON-GATING): HONEST grading against the paper's
+    # exact finding. Cockx 2024 Fig 5 reports a density-dependent winner --
+    # YS favored at low density, RS at intermediate density, YS favored AGAIN
+    # at high density (a NON-MONOTONIC flip). Over the paper's FULL 21-day
+    # horizon our measured RS biomass fractions are 0.382 / 0.539 / 0.619 at
+    # n_each 5/10/50: YS wins outright at low density, RS wins at intermediate
+    # AND high density -- a genuine density-dependent winner REVERSAL (YS -> RS
+    # as density rises) that reproduces the paper's low-density-YS and
+    # intermediate-density-RS legs, but MONOTONIC (YS-RS-RS) rather than the
+    # paper's non-monotonic YS-RS-YS: we do NOT reproduce the high-density
+    # re-flip back to YS.
     fracs_by_n = [fractions[n] for n in DENSITIES]
-    monotonic_decreasing = all(fracs_by_n[i] > fracs_by_n[i + 1] for i in range(len(fracs_by_n) - 1))
-    any_ys_win = any(f < 0.5 for f in fracs_by_n)
-    if any_ys_win and monotonic_decreasing:
-        # A genuine partial match (density trend AND an outright YS win somewhere).
-        paper_verdict = "within_tol"
-        paper_note = "RS fraction decreases with density AND YS wins outright at the highest density tested."
+    winners = ["YS" if f < 0.5 else "RS" for f in fracs_by_n]
+    winner_changes_with_density = len(set(winners)) > 1
+    reproduces_high_ys_reflip = winners[1] == "RS" and winners[-1] == "YS"
+
+    winner_verdict = "within_tol" if winner_changes_with_density else "drift"
+    winner_note = (
+        f"Winner by seeding density (RS biomass fraction): "
+        f"n=5 -> {fractions[DENSITIES[0]]:.3f} ({winners[0]}), "
+        f"n=10 -> {fractions[DENSITIES[1]]:.3f} ({winners[1]}), "
+        f"n=50 -> {fractions[DENSITIES[2]]:.3f} ({winners[2]}). Seeding density "
+        "genuinely decides the winner (YS at low density, RS at intermediate/high) "
+        "-- reproducing the paper's core density-dependent competition phenomenon "
+        "over the paper's full 21-day horizon."
+    )
+    if reproduces_high_ys_reflip:
+        flip_verdict = "within_tol"
+        flip_note = "Non-monotonic YS-RS-YS flip reproduced, matching the paper exactly."
     else:
-        paper_verdict = "drift"
-        paper_note = (
-            "RS fraction decreases monotonically with seeding density (qualitative direction "
-            "matches the paper's high-density YS-favoring trend), but RS remains dominant "
-            "(fraction > 0.5) at every density tested -- no outright YS win, and no low-density "
-            "YS-favored / intermediate-density RS-favored flip as the paper reports. Shortened "
-            "4-day horizon (vs the paper's 21 days) is the leading suspect: the paper's flip may "
-            "only emerge as the biofilm matures and becomes more strongly diffusion-limited. This "
-            "axis is intentionally NON-GATING (see study.yaml's paper-flip-fidelity supporting "
-            "test) -- it documents the gap honestly rather than being silently dropped or folded "
-            "into the gating 'competition' group's verdict."
+        flip_verdict = "drift"
+        flip_note = (
+            "The paper's EXACT pattern is non-monotonic (YS low, RS intermediate, YS "
+            "again at high density). We reproduce the low-density YS win and the "
+            "intermediate-density RS win -- a real density-dependent winner reversal -- "
+            "but the trend is MONOTONIC (YS-RS-RS): RS fraction keeps rising with density "
+            f"({fracs_by_n[0]:.3f} -> {fracs_by_n[1]:.3f} -> {fracs_by_n[2]:.3f}) rather "
+            "than re-flipping to YS at high density. Candidate reasons for the missing "
+            "high-density re-flip: our 2D single-oxygen simplification vs the paper's "
+            "fuller multi-substrate / force-based (FbM) setup, and domain/geometry "
+            "differences. Graded drift honestly, kept out of the gating group."
         )
 
     return {
@@ -174,14 +191,26 @@ def build_verdict(runs: dict[int, list[dict]], outcomes: list[dict]) -> dict:
                     },
                 ]
             },
-            "paper-fidelity": {
+            "winner-reversal": {
                 "axes": [
                     {
-                        "name": "matches-paper-direction",
-                        "verdict": paper_verdict,
-                        "value": fractions,
-                        "reference": "paper: YS low, RS intermediate, YS high (non-monotonic flip)",
-                        "note": paper_note,
+                        "name": "density-changes-the-winner",
+                        "verdict": winner_verdict,
+                        "value": {str(n): fractions[n] for n in DENSITIES},
+                        "reference": "paper: seeding density decides the winner",
+                        "note": winner_note,
+                        "gating": False,
+                    },
+                ]
+            },
+            "exact-flip": {
+                "axes": [
+                    {
+                        "name": "matches-paper-non-monotonic-flip",
+                        "verdict": flip_verdict,
+                        "value": {str(n): fractions[n] for n in DENSITIES},
+                        "reference": "paper: YS low, RS intermediate, YS high (non-monotonic)",
+                        "note": flip_note,
                         "gating": False,
                     },
                 ]
