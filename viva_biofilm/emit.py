@@ -97,62 +97,122 @@ def _observable_state(snap: dict) -> dict:
     return state
 
 
+def _write_zarr(study_dir: Path, full_id: str, snaps: list[dict]) -> None:
+    """Write the run's time-series to ``<study_dir>/runs.<full_id>.zarr`` via the
+    process-bigraph ``XArrayEmitter`` (``strategy="flat"``) — the ecosystem's
+    preferred store, read natively by the dashboard's Data Explorer + charts.
+
+    Driven standalone (no Composite) and bulk over the already-subsampled scalar
+    snapshots, so there is no per-tick full-state accumulation. Raises if
+    ``pbg-emitters[xarray]`` is unavailable so the caller can fall back to sqlite.
+    """
+    from bigraph_schema import allocate_core
+    from pbg_emitters.xarray_emitter import XArrayEmitter
+    from pbg_emitters.xarray_emitter.view import view_from_emit_paths
+
+    states = [_observable_state(s) for s in snaps]
+    # `time`/`step` are the run's coordinate (emitted as global_time), not
+    # observables — exclude them from the data-var set.
+    ports = sorted({k for st in states for k in st if k not in ("time", "step")})
+    store = str(study_dir / f"runs.{full_id}.zarr")
+    cfg = {
+        "out_uri": store, "strategy": "flat", "emit_root": [],
+        "transducer": {"predicate": [[{"subsample": {"interval": 1}}]],
+                       "buffer": {"size": 3}},
+        "view": view_from_emit_paths(ports, dtype="<f8"),
+        "writer": {"backend": "zarr", "store": store, "buffers_per_chunk": 1,
+                   "backend_config": {"format": 3}},
+        "metadata": {"experiment_id": full_id},
+        "metadata_keys": [], "metadata_validators": {}, "output_metadata": {},
+        "debug": False,
+    }
+    emitter = XArrayEmitter(cfg, allocate_core())
+    for step, (snap, st) in enumerate(zip(snaps, states)):
+        emitter.update({"global_time": float(snap.get("time", step)),
+                        **{k: float(st.get(k) or 0.0) for k in ports}})
+    emitter.close(success=True)
+
+
 def emit_run(study_dir, spec_id: str, snaps: list[dict], *,
              run_id: str = "baseline", label: str | None = None,
-             reset: bool = True) -> str:
-    """Emit one run for a study into ``<study_dir>/runs.db`` (a SQLite store).
+             reset: bool = True, emitter: str = "xarray") -> str:
+    """Emit one run for a study so the dashboard lists + explores it.
 
-    Writes a ``runs_meta`` row (Runs tab) and a ``history`` table (Data
-    Explorer / native time-series charts) in the ``process_bigraph`` SQLite
-    emitter schema. The whole time-series is bulk-inserted from the already-
-    subsampled scalar snapshots, so there is no per-tick accumulation.
+    Always writes a ``runs_meta`` row into ``<study_dir>/runs.db`` (drives the
+    Runs tab, study-grouped). The run's DATA store depends on ``emitter``:
+
+    - ``"xarray"`` (default, PREFERRED): the time-series is written to
+      ``<study_dir>/runs.<full_id>.zarr`` via the process-bigraph
+      ``XArrayEmitter`` — the ecosystem's preferred store. Falls back to sqlite
+      if ``pbg-emitters[xarray]`` is unavailable.
+    - ``"sqlite"``: the time-series is written to a ``history`` table in
+      ``runs.db`` (the process_bigraph SQLiteEmitter schema).
+
+    Either way the data comes from the already-subsampled scalar snapshots via a
+    single bulk write — no per-tick full-state accumulation.
 
     Parameters
     ----------
-    study_dir : path to the study directory (the one holding ``study.yaml``).
-    spec_id   : spec/study identifier for the run (use the study slug).
+    study_dir : path to the study directory (holding ``study.yaml``).
+    spec_id   : spec/study identifier (use the study slug).
     snaps     : the study's list of per-step snapshot dicts.
     run_id    : short run id; the stored id is namespaced ``<spec_id>-<run_id>``
                 so it is unique across the workspace (the dashboard folds runs by
                 run_id globally). Use distinct short ids for a multi-run study.
     label     : human label shown in the dashboard (defaults to the short id).
-    reset     : when True (default) the call first deletes ``runs.db`` so a
-                re-run leaves no stale rows. Pass ``reset=False`` for the
-                2nd..Nth run of a multi-run study.
+    reset     : when True (default) first deletes the study's ``runs.db`` and any
+                ``runs.*.zarr`` so a re-run leaves nothing stale. Pass False for
+                the 2nd..Nth run of a multi-run study.
+    emitter   : ``"xarray"`` (default) or ``"sqlite"``.
 
     Returns the stored (namespaced) run id.
     """
     study_dir = Path(study_dir)
     study_dir.mkdir(parents=True, exist_ok=True)
     runs_db = study_dir / "runs.db"
-    # Legacy out/ parquet dir from an earlier emit format — remove if present.
-    out_root = study_dir / "out"
     if reset:
-        if out_root.exists():
-            shutil.rmtree(out_root)
+        legacy_out = study_dir / "out"  # legacy parquet dir from an older format
+        if legacy_out.exists():
+            shutil.rmtree(legacy_out)
         if runs_db.exists():
             runs_db.unlink()
+        for stale in study_dir.glob("runs.*.zarr"):
+            shutil.rmtree(stale)
 
     # Namespace the id with the study slug so it's workspace-unique (the run_log
     # fold + simulations_index dedup key on run_id alone across ALL studies).
     full_id = run_id if run_id.startswith(f"{spec_id}-") else f"{spec_id}-{run_id}"
-    now = time.time()
 
+    kind = emitter
+    if kind == "xarray":
+        try:
+            _write_zarr(study_dir, full_id, snaps)
+        except Exception:
+            # pbg-emitters[xarray] missing, or a short run (< the emitter's
+            # buffer size) — drop any partial store and fall back to sqlite.
+            partial = study_dir / f"runs.{full_id}.zarr"
+            if partial.exists():
+                shutil.rmtree(partial)
+            kind = "sqlite"
+
+    now = time.time()
     conn = sqlite3.connect(runs_db)
     try:
-        conn.executescript(_RUNS_META_DDL + _HISTORY_DDL)
+        conn.executescript(_RUNS_META_DDL)
         conn.execute(
             "INSERT OR REPLACE INTO runs_meta"
-            "(run_id, spec_id, label, started_at, completed_at, n_steps, status)"
-            " VALUES(?,?,?,?,?,?,?)",
-            (full_id, spec_id, label or run_id, now, now, len(snaps), "completed"),
+            "(run_id, spec_id, label, started_at, completed_at, n_steps, status, sim_name)"
+            " VALUES(?,?,?,?,?,?,?,?)",
+            (full_id, spec_id, label or run_id, now, now, len(snaps), "completed", full_id),
         )
-        conn.executemany(
-            "INSERT INTO history(simulation_id, step, global_time, state) VALUES(?,?,?,?)",
-            [(full_id, step, float(s.get("time", step)),
-              json.dumps(_observable_state(s)))
-             for step, s in enumerate(snaps)],
-        )
+        if kind == "sqlite":
+            conn.executescript(_HISTORY_DDL)
+            conn.executemany(
+                "INSERT INTO history(simulation_id, step, global_time, state) VALUES(?,?,?,?)",
+                [(full_id, step, float(s.get("time", step)),
+                  json.dumps(_observable_state(s)))
+                 for step, s in enumerate(snaps)],
+            )
         conn.commit()
     finally:
         conn.close()
