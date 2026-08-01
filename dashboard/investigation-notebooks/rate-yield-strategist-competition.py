@@ -179,15 +179,20 @@ def _save_viz(study, slug, html):
 # outcome vs seeding density
 _save_viz('fig5-rs-ys-competition', 'outcome_vs_seeding_density', _render_one('image:charts/outcome_vs_density.png', {'title': 'Competition outcome vs seeding density', 'caption': 'Final RS biomass fraction at n_each=5/10/50, with the 0.5 tie line marked'}, RUNS_DB, STUDY_YAML))
 
-# **colony at n_each=5**
+# **colony at n_each=5 (Fig. 5 view)**
 
-# colony at n_each=5
-_save_viz('fig5-rs-ys-competition', 'colony_at_n_each_5', _render_one('image:charts/colony_density5.png', {'title': 'Final colony, n_each=5', 'caption': 'Agents colored by strategy (RS blue, YS red) at the low-density seeding'}, RUNS_DB, STUDY_YAML))
+# colony at n_each=5 (Fig. 5 view)
+_save_viz('fig5-rs-ys-competition', 'colony_at_n_each_5_Fig._5_view', _render_one('image:charts/colony_density5.png', {'title': 'Cockx 2024 Fig. 5 view — colony at n_each=5 (t=21d)', 'caption': 'Day-21 biofilm cross-section, cells colored by strategy (RS blue, YS red) over the oxygen field (grayscale: dark=depleted near substratum, light=bulk O2), a 60-µm interior window. Low-density seeding — YS ahead.'}, RUNS_DB, STUDY_YAML))
 
-# **colony at n_each=50**
+# **colony at n_each=10 (Fig. 5 view)**
 
-# colony at n_each=50
-_save_viz('fig5-rs-ys-competition', 'colony_at_n_each_50', _render_one('image:charts/colony_density50.png', {'title': 'Final colony, n_each=50', 'caption': 'Agents colored by strategy (RS blue, YS red) at the high-density seeding'}, RUNS_DB, STUDY_YAML))
+# colony at n_each=10 (Fig. 5 view)
+_save_viz('fig5-rs-ys-competition', 'colony_at_n_each_10_Fig._5_view', _render_one('image:charts/colony_density10.png', {'title': 'Cockx 2024 Fig. 5 view — colony at n_each=10 (t=21d)', 'caption': 'Same view at intermediate-density seeding — RS ahead. Cells over the oxygen gradient they draw down.'}, RUNS_DB, STUDY_YAML))
+
+# **colony at n_each=50 (Fig. 5 view)**
+
+# colony at n_each=50 (Fig. 5 view)
+_save_viz('fig5-rs-ys-competition', 'colony_at_n_each_50_Fig._5_view', _render_one('image:charts/colony_density50.png', {'title': 'Cockx 2024 Fig. 5 view — colony at n_each=50 (t=21d)', 'caption': 'Same view at high-density seeding — RS ahead. Cells colored by strategy over the oxygen field.'}, RUNS_DB, STUDY_YAML))
 
 # **RS fraction over time**
 
