@@ -120,7 +120,9 @@ def _write_zarr(study_dir: Path, full_id: str, snaps: list[dict]) -> None:
         "transducer": {"predicate": [[{"subsample": {"interval": 1}}]],
                        "buffer": {"size": 3}},
         "view": view_from_emit_paths(ports, dtype="<f8"),
-        "writer": {"backend": "zarr", "store": store, "buffers_per_chunk": 1,
+        # Coalesce all buffers into one chunk per variable — these are short
+        # scalar runs, so a chunk-per-buffer would commit hundreds of tiny files.
+        "writer": {"backend": "zarr", "store": store, "buffers_per_chunk": 100000,
                    "backend_config": {"format": 3}},
         "metadata": {"experiment_id": full_id},
         "metadata_keys": [], "metadata_validators": {}, "output_metadata": {},
