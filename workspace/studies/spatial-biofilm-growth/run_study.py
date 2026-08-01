@@ -15,6 +15,7 @@ import shutil
 
 from viva_biofilm.run import run_biofilm, default_spec
 from viva_biofilm import viz
+from viva_biofilm.emit import emit_run
 
 HERE = pathlib.Path(__file__).parent
 CHARTS = HERE / "charts"
@@ -178,6 +179,9 @@ def main() -> None:
 
     verdict = build_verdict(snaps)
     (REPORT_CARD / "report_card_verdict.json").write_text(json.dumps(verdict, indent=2))
+
+    # Register this simulation as a run for the dashboard's Runs tab.
+    emit_run(HERE, spec_id="spatial-biofilm-growth", snaps=snaps)
 
     substratum, boundary, ratio = gradient_stats(last)
     print(

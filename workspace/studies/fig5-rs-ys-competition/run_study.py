@@ -27,6 +27,7 @@ import plotly.graph_objects as go
 
 from viva_biofilm.run import competition_spec, run_competition
 from viva_biofilm import viz
+from viva_biofilm.emit import emit_run
 
 HERE = pathlib.Path(__file__).parent
 CHARTS = HERE / "charts"
@@ -240,6 +241,11 @@ def main() -> None:
         runs[n] = snaps
         print(f"density n_each={n:>3}: {N_STEPS} steps ({N_STEPS * DT:.2f} d) in {wall_times[n]:.1f}s"
               f"  final pop_by_strategy={snaps[-1]['pop_by_strategy']}")
+
+    # Emit each seeding density as its own run so the dashboard's Runs tab lists them.
+    for i, n in enumerate(DENSITIES):
+        emit_run(HERE, spec_id="fig5-rs-ys-competition", snaps=runs[n],
+                 run_id=f"n_each_{n}", label=f"n_each={n} (21 d)", reset=(i == 0))
 
     outcomes = [{"n_each": n, "rs_fraction": rs_fraction(runs[n][-1])} for n in DENSITIES]
 

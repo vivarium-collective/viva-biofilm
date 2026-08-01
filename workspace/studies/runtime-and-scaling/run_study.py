@@ -18,8 +18,9 @@ import time
 import numpy as np
 
 from viva_biofilm.schema import load_world
-from viva_biofilm.run import default_spec
+from viva_biofilm.run import default_spec, run_biofilm
 from viva_biofilm import viz
+from viva_biofilm.emit import emit_run
 import plotly.graph_objects as go
 
 HERE = pathlib.Path(__file__).parent
@@ -346,6 +347,15 @@ def main() -> None:
 
     verdict = build_verdict(grid_r, pop_r, dur_r, peak_throughput)
     (REPORT_CARD / "report_card_verdict.json").write_text(json.dumps(verdict, indent=2))
+
+    # Register a run for the dashboard's Runs tab. Emit a small DETERMINISTIC
+    # biofilm run (population/biomass/thickness are load-independent) rather than
+    # the wall-time sweep above — the sweep's timings are machine-load-dependent
+    # and would make the run's committed observables non-reproducible.
+    rep = run_biofilm(default_spec(nx=48, ny=64, n_agents=40, seed=7),
+                      n_steps=60, snapshot_every=6, dt=0.05)
+    emit_run(HERE, spec_id="runtime-and-scaling", snaps=rep,
+             run_id="representative", label="representative biofilm run")
 
     slow = [r for r in all_results if r["slow"]]
     print()

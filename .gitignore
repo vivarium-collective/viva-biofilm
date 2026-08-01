@@ -6,4 +6,12 @@ __pycache__/
 *.egg-info/
 /.superpowers/
 /.pbg/
-/reports/
+/reports/*
+# ...but DO track the study figure HTMLs — the read-only dashboard's
+# "Embedded visualizations" panel serves these files at runtime
+# (publish.py::_stage_embed_visualizations copies them into the bundle only if
+# they exist in the checkout). Keep the interactive HTML tracked; the PNG
+# siblings are redundant with workspace/studies/*/charts/ so stay ignored.
+!/reports/figures/
+!/reports/figures/**
+/reports/figures/**/*.png

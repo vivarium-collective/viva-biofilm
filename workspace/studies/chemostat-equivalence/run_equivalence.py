@@ -2,6 +2,7 @@ import json, math, pathlib
 import plotly.graph_objects as go
 from viva_biofilm.schema import load_chemostat
 from viva_biofilm import viz
+from viva_biofilm.emit import emit_run
 
 HERE = pathlib.Path(__file__).parent
 SPEC = {
@@ -82,6 +83,11 @@ def main():
     report_card_dir.mkdir(parents=True, exist_ok=True)
     (report_card_dir / "report_card_verdict.json").write_text(json.dumps(out, indent=2))
     print(json.dumps(out, indent=2))
+
+    # Register the decay simulation as a run for the dashboard's Runs tab.
+    snaps = [{"time": t, "solute1": v, "solute1_analytic": a}
+             for t, v, a in zip(ts, s1, analytic)]
+    emit_run(HERE, spec_id="chemostat-equivalence", snaps=snaps)
 
 if __name__ == "__main__":
     main()

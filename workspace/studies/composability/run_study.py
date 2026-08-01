@@ -30,6 +30,7 @@ from viva_biofilm.processes.controller_process import BoundaryControllerProcess
 from viva_biofilm.processes.biofilm_process import BiofilmProcess
 from viva_biofilm.run import default_spec
 from viva_biofilm import viz
+from viva_biofilm.emit import emit_run
 
 HERE = pathlib.Path(__file__).parent
 CHARTS = HERE / "charts"
@@ -263,6 +264,12 @@ def main() -> None:
 
     verdict = build_verdict(perturbed, control)
     (REPORT_CARD / "report_card_verdict.json").write_text(json.dumps(verdict, indent=2))
+
+    # Register both arms as runs for the dashboard's Runs tab.
+    emit_run(HERE, spec_id="composability", snaps=perturbed,
+             run_id="perturbed", label="perturbed (O2 dip)", reset=True)
+    emit_run(HERE, spec_id="composability", snaps=control,
+             run_id="control", label="control (constant O2)", reset=False)
 
     p_final, c_final = perturbed[-1], control[-1]
     axes = verdict["groups"]["composability"]["axes"]
