@@ -118,7 +118,13 @@ def emit_run(study_dir, spec_id: str, snaps: list[dict], *,
         if runs_db.exists():
             runs_db.unlink()
 
-    run_dir = out_root / run_id
+    # The dashboard folds runs by run_id GLOBALLY across the workspace (run_log
+    # fold + simulations_index dedup key on run_id alone), so two studies using
+    # the same short id (e.g. both "baseline") would collide and one would drop.
+    # Namespace the id with the study slug (spec_id) to keep it workspace-unique;
+    # keep the caller's short id as the display label.
+    full_id = run_id if run_id.startswith(f"{spec_id}-") else f"{spec_id}-{run_id}"
+    run_dir = out_root / full_id
     run_dir.mkdir(parents=True, exist_ok=True)
     _observables_frame(snaps).to_parquet(run_dir / "observables.parquet", index=False)
 
@@ -130,10 +136,10 @@ def emit_run(study_dir, spec_id: str, snaps: list[dict], *,
             "INSERT OR REPLACE INTO runs_meta"
             "(run_id, spec_id, label, started_at, completed_at, n_steps, status, emitter_path)"
             " VALUES(?,?,?,?,?,?,?,?)",
-            (run_id, spec_id, label or run_id, now, now, len(snaps),
-             "completed", f"out/{run_id}"),
+            (full_id, spec_id, label or run_id, now, now, len(snaps),
+             "completed", f"out/{full_id}"),
         )
         conn.commit()
     finally:
         conn.close()
-    return run_id
+    return full_id

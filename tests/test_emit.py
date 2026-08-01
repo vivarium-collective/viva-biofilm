@@ -16,10 +16,11 @@ def _biofilm_snaps():
 
 
 def test_emit_run_writes_parquet_and_runs_meta(tmp_path):
+    # run_id is namespaced with the study slug so it's workspace-unique.
     run_id = emit_run(tmp_path, spec_id="my-study", snaps=_biofilm_snaps())
-    assert run_id == "baseline"
+    assert run_id == "my-study-baseline"
 
-    parquet = tmp_path / "out" / "baseline" / "observables.parquet"
+    parquet = tmp_path / "out" / "my-study-baseline" / "observables.parquet"
     assert parquet.is_file()
     df = pd.read_parquet(parquet)
     assert len(df) == 2
@@ -31,8 +32,9 @@ def test_emit_run_writes_parquet_and_runs_meta(tmp_path):
     runs_db = tmp_path / "runs.db"
     assert runs_db.is_file()
     rows = sqlite3.connect(runs_db).execute(
-        "SELECT run_id, spec_id, status, n_steps, emitter_path FROM runs_meta").fetchall()
-    assert rows == [("baseline", "my-study", "completed", 2, "out/baseline")]
+        "SELECT run_id, spec_id, label, status, n_steps, emitter_path FROM runs_meta").fetchall()
+    assert rows == [("my-study-baseline", "my-study", "baseline", "completed", 2,
+                     "out/my-study-baseline")]
 
 
 def test_observables_frame_carries_arbitrary_scalars():
@@ -49,9 +51,18 @@ def test_emit_run_multi_run_accumulates(tmp_path):
     emit_run(tmp_path, spec_id="s", snaps=_biofilm_snaps(), run_id="b", reset=False)
     ids = {r[0] for r in sqlite3.connect(tmp_path / "runs.db").execute(
         "SELECT run_id FROM runs_meta")}
-    assert ids == {"a", "b"}
-    assert (tmp_path / "out" / "a" / "observables.parquet").is_file()
-    assert (tmp_path / "out" / "b" / "observables.parquet").is_file()
+    assert ids == {"s-a", "s-b"}
+    assert (tmp_path / "out" / "s-a" / "observables.parquet").is_file()
+    assert (tmp_path / "out" / "s-b" / "observables.parquet").is_file()
+
+
+def test_emit_run_ids_are_study_namespaced_for_global_uniqueness(tmp_path):
+    # Two studies both using the default "baseline" must NOT collide on run_id
+    # (the dashboard folds runs by run_id globally across the workspace).
+    a = emit_run(tmp_path / "study_a", spec_id="study-a", snaps=_biofilm_snaps())
+    b = emit_run(tmp_path / "study_b", spec_id="study-b", snaps=_biofilm_snaps())
+    assert a != b
+    assert a == "study-a-baseline" and b == "study-b-baseline"
 
 
 def test_emit_run_reset_clears_stale(tmp_path):
@@ -60,5 +71,5 @@ def test_emit_run_reset_clears_stale(tmp_path):
     emit_run(tmp_path, spec_id="s", snaps=_biofilm_snaps(), run_id="new", reset=True)
     ids = {r[0] for r in sqlite3.connect(tmp_path / "runs.db").execute(
         "SELECT run_id FROM runs_meta")}
-    assert ids == {"new"}
-    assert not (tmp_path / "out" / "old").exists()
+    assert ids == {"s-new"}
+    assert not (tmp_path / "out" / "s-old").exists()
