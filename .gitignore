@@ -15,3 +15,7 @@ __pycache__/
 !/reports/figures/
 !/reports/figures/**
 /reports/figures/**/*.png
+
+# transient SQLite WAL/shm sidecar files
+*.db-wal
+*.db-shm
