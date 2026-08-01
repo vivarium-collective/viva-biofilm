@@ -288,18 +288,6 @@ competition outcome, and in what direction?
         <div style="display:flex;gap:10px;align-items:flex-start;padding:8px 12px;border-top:1px solid #f1f5f9">
           <span style="padding:1px 8px;border-radius:9999px;background:#fee2e2;color:#991b1b;font-weight:600;font-size:0.72em;white-space:nowrap">high</span>
           <div>
-            <strong style="color:#1e293b">claim-untested</strong>
-            <code style="font-size:0.82em">replication</code>
-            <div style="color:#475569;font-size:0.9em;margin-top:1px">single run — no replication across seeds declared (add robustness.seeds or simulation_set.seeds)</div>
-          </div>
-        </div>
-        
-        
-        
-        
-        <div style="display:flex;gap:10px;align-items:flex-start;padding:8px 12px;border-top:1px solid #f1f5f9">
-          <span style="padding:1px 8px;border-radius:9999px;background:#fee2e2;color:#991b1b;font-weight:600;font-size:0.72em;white-space:nowrap">high</span>
-          <div>
             <strong style="color:#1e293b">control-absent</strong>
             <code style="font-size:0.82em">negative_control</code>
             <div style="color:#475569;font-size:0.9em;margin-top:1px">no controls — declare a system that SHOULD fail the criteria (externally-maintained / -supplied) plus a clearly-passing / borderline case so the metric is calibrated, not just asserted</div>
@@ -419,7 +407,7 @@ competition outcome, and in what direction?
           <span class="count-label">requirements</span>
         </div>
         <div class="count-cell">
-          <strong>0</strong>
+          <strong>3</strong>
           <span class="count-label">runs</span>
         </div>
       </div>
@@ -469,6 +457,13 @@ competition outcome, and in what direction?
         <p class="muted" style="font-size:0.85em;margin:0">Loading configuration…</p></div>
       
       
+      
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;font-size:0.8em">
+        
+        <span class="cond-pill"><span class="cond-pill-k">steps</span>=22</span>
+        
+        <span class="cond-pill"><span class="cond-pill-k">status</span>=completed</span>
+      </div>
       
     </div>
     
@@ -676,7 +671,7 @@ competition outcome, and in what direction?
   <div class="panel" style="padding:14px 18px;margin-bottom:12px">
     <header style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px">
       <strong style="font-size:1.05em">fig5-rs-ys-competition-baseline</strong>
-      <span class="sim-status-pill sim-status-ready">ready</span>
+      <span class="sim-status-pill sim-status-completed">completed</span>
       
     </header>
     <div style="font-size:0.9em;margin-bottom:6px">
@@ -692,7 +687,7 @@ competition outcome, and in what direction?
     <p style="margin:4px 0;font-size:0.86em" class="muted">
       
       <strong>Tests applied:</strong> 3 · 
-      
+      <strong>Runs recorded:</strong> 3
     </p>
     
     
@@ -1105,6 +1100,19 @@ expect:  {"level": "within_tol", "op": "verdict_at_least"}</pre>
     
     
     
+    <div class="decide-section">
+      <h3 class="overview-label">Latest run outcomes</h3>
+      <div style="font-size:0.88em;color:#64748b;margin-bottom:8px">
+        baseline · seed ? ·
+        ?s simulated ·
+        ? history rows ·
+        started 1785594515.662762
+      </div>
+      
+      
+      
+    </div>
+    
     
 
   </div>
@@ -1128,7 +1136,7 @@ expect:  {"level": "within_tol", "op": "verdict_at_least"}</pre>
 </section>
 
 </main>
-<script>window.__DASH_CONFIG__ = { mode: "snapshot", interactiveUrl: "https://github.com/vivarium-collective/viva-biofilm", basePath: "/viva-biofilm/dashboard", inputsDownloadBase: "https://github.com/vivarium-collective/viva-biofilm/raw/main", provenance: {"repo_slug": "vivarium-collective/viva-biofilm", "repo_url": "https://github.com/vivarium-collective/viva-biofilm", "commit": "0ed7eed2ef0efe76f6855e34aecaec20d57532f7", "commit_url": "https://github.com/vivarium-collective/viva-biofilm/commit/0ed7eed2ef0efe76f6855e34aecaec20d57532f7", "branch": "main", "generated_at": "2026-08-01 13:36 UTC"} };</script>
+<script>window.__DASH_CONFIG__ = { mode: "snapshot", interactiveUrl: "https://github.com/vivarium-collective/viva-biofilm", basePath: "/viva-biofilm/dashboard", inputsDownloadBase: "https://github.com/vivarium-collective/viva-biofilm/raw/main", provenance: {"repo_slug": "vivarium-collective/viva-biofilm", "repo_url": "https://github.com/vivarium-collective/viva-biofilm", "commit": "3940d8e1e3f55224153b40914a377f9c8f8ef800", "commit_url": "https://github.com/vivarium-collective/viva-biofilm/commit/3940d8e1e3f55224153b40914a377f9c8f8ef800", "branch": "main", "generated_at": "2026-08-01 14:37 UTC"} };</script>
 <script src="/viva-biofilm/dashboard/assets/data-source.js"></script>
 <script>
 window._studyName = "fig5-rs-ys-competition";

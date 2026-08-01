@@ -141,6 +141,20 @@ def describe_spec(spec):
 # non-swept run?
 
 # ### Parameters
+#
+# | simulation | composite | steps | params |
+# | --- | --- | --- | --- |
+# | `spatial-biofilm-growth` | `spatial-biofilm-growth` | 11 | — |
+
+# ### Specification (process-bigraph) — load, inspect, edit
+#
+# Each composite is a process-bigraph *document*: named processes (`_type: process`) bound to an `address`, wired by `inputs`/`outputs` ports over shared stores. For every composite below the first cell loads the spec into a plain **editable Python dict** and prints its structure; the second cell is a **control panel** listing every configuration value and per-process `interval` so you can tweak any of them. Your edits are read when the composite is built and run, in the **Run** section.
+
+# **Composite `spatial-biofilm-growth`** — `spec_spatial_biofilm_growth` (a plain, editable dict)
+
+from viva_superpowers.composite_spec import load_spec
+spec_spatial_biofilm_growth = load_spec(REPO / 'viva_biofilm/composites/spatial-biofilm-growth.composite.yaml')
+describe_spec(spec_spatial_biofilm_growth)
 
 # ### Run
 #
@@ -152,7 +166,21 @@ STUDY_DIR = REPO / 'workspace/studies' / STUDY
 STUDY_YAML = str(STUDY_DIR / "study.yaml")
 RUNS_DB = str(STUDY_DIR / "runs.db")
 
-print("No recorded runs for this study; nothing to reproduce.")
+# Runtime knobs — edit freely. STEPS = number of composite steps;
+# INTERVAL = global dt filling ${interval} placeholders (a per-process
+# interval pinned in the edit cell above takes precedence).
+STEPS_spatial_biofilm_growth = 11
+INTERVAL_spatial_biofilm_growth = 0.1
+
+if RERUN:
+    with quiet():  # the sim prints per-step progress; keep it out of the notebook
+        # Generic process-bigraph protocol (no workspace runner detected):
+        from viva_superpowers.composite_spec import build_composite_from_spec
+        comp = build_composite_from_spec(spec_spatial_biofilm_growth, {'interval': INTERVAL_spatial_biofilm_growth}, core=core)
+        comp.run(STEPS_spatial_biofilm_growth)  # writes the composite's declared emitter
+    print(f'ran 1 simulation(s) -> {RUNS_DB}')
+else:
+    print("RERUN=False — rendering committed", RUNS_DB)
 
 # ### Visualizations
 #
@@ -212,6 +240,20 @@ _save_viz('spatial-biofilm-growth', 'growth_curves', _render_one('image:charts/g
 # (agent-steps/sec) does it sustain?
 
 # ### Parameters
+#
+# | simulation | composite | steps | params |
+# | --- | --- | --- | --- |
+# | `runtime-and-scaling` | `runtime-and-scaling` | 11 | — |
+
+# ### Specification (process-bigraph) — load, inspect, edit
+#
+# Each composite is a process-bigraph *document*: named processes (`_type: process`) bound to an `address`, wired by `inputs`/`outputs` ports over shared stores. For every composite below the first cell loads the spec into a plain **editable Python dict** and prints its structure; the second cell is a **control panel** listing every configuration value and per-process `interval` so you can tweak any of them. Your edits are read when the composite is built and run, in the **Run** section.
+
+# **Composite `runtime-and-scaling`** — `spec_runtime_and_scaling` (a plain, editable dict)
+
+from viva_superpowers.composite_spec import load_spec
+spec_runtime_and_scaling = load_spec(REPO / 'viva_biofilm/composites/runtime-and-scaling.composite.yaml')
+describe_spec(spec_runtime_and_scaling)
 
 # ### Run
 #
@@ -223,7 +265,21 @@ STUDY_DIR = REPO / 'workspace/studies' / STUDY
 STUDY_YAML = str(STUDY_DIR / "study.yaml")
 RUNS_DB = str(STUDY_DIR / "runs.db")
 
-print("No recorded runs for this study; nothing to reproduce.")
+# Runtime knobs — edit freely. STEPS = number of composite steps;
+# INTERVAL = global dt filling ${interval} placeholders (a per-process
+# interval pinned in the edit cell above takes precedence).
+STEPS_runtime_and_scaling = 11
+INTERVAL_runtime_and_scaling = 0.1
+
+if RERUN:
+    with quiet():  # the sim prints per-step progress; keep it out of the notebook
+        # Generic process-bigraph protocol (no workspace runner detected):
+        from viva_superpowers.composite_spec import build_composite_from_spec
+        comp = build_composite_from_spec(spec_runtime_and_scaling, {'interval': INTERVAL_runtime_and_scaling}, core=core)
+        comp.run(STEPS_runtime_and_scaling)  # writes the composite's declared emitter
+    print(f'ran 1 simulation(s) -> {RUNS_DB}')
+else:
+    print("RERUN=False — rendering committed", RUNS_DB)
 
 # ### Visualizations
 #
@@ -267,6 +323,21 @@ _save_viz('runtime-and-scaling', 'throughput', _render_one('image:charts/through
 # processes sharing a store?
 
 # ### Parameters
+#
+# | simulation | composite | steps | params |
+# | --- | --- | --- | --- |
+# | `composability` | `composability` | 81 | — |
+# | `composability` | `composability` | 81 | — |
+
+# ### Specification (process-bigraph) — load, inspect, edit
+#
+# Each composite is a process-bigraph *document*: named processes (`_type: process`) bound to an `address`, wired by `inputs`/`outputs` ports over shared stores. For every composite below the first cell loads the spec into a plain **editable Python dict** and prints its structure; the second cell is a **control panel** listing every configuration value and per-process `interval` so you can tweak any of them. Your edits are read when the composite is built and run, in the **Run** section.
+
+# **Composite `composability`** — `spec_composability` (a plain, editable dict)
+
+from viva_superpowers.composite_spec import load_spec
+spec_composability = load_spec(REPO / 'viva_biofilm/composites/composability.composite.yaml')
+describe_spec(spec_composability)
 
 # ### Run
 #
@@ -278,7 +349,25 @@ STUDY_DIR = REPO / 'workspace/studies' / STUDY
 STUDY_YAML = str(STUDY_DIR / "study.yaml")
 RUNS_DB = str(STUDY_DIR / "runs.db")
 
-print("No recorded runs for this study; nothing to reproduce.")
+# Runtime knobs — edit freely. STEPS = number of composite steps;
+# INTERVAL = global dt filling ${interval} placeholders (a per-process
+# interval pinned in the edit cell above takes precedence).
+STEPS_composability = 81
+INTERVAL_composability = 0.1
+STEPS_composability = 81
+INTERVAL_composability = 0.1
+
+if RERUN:
+    with quiet():  # the sim prints per-step progress; keep it out of the notebook
+        # Generic process-bigraph protocol (no workspace runner detected):
+        from viva_superpowers.composite_spec import build_composite_from_spec
+        comp = build_composite_from_spec(spec_composability, {'interval': INTERVAL_composability}, core=core)
+        comp.run(STEPS_composability)  # writes the composite's declared emitter
+        comp = build_composite_from_spec(spec_composability, {'interval': INTERVAL_composability}, core=core)
+        comp.run(STEPS_composability)  # writes the composite's declared emitter
+    print(f'ran 2 simulation(s) -> {RUNS_DB}')
+else:
+    print("RERUN=False — rendering committed", RUNS_DB)
 
 # ### Visualizations
 #

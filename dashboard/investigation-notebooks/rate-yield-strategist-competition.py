@@ -149,6 +149,22 @@ def describe_spec(spec):
 # competition outcome, and in what direction?
 
 # ### Parameters
+#
+# | simulation | composite | steps | params |
+# | --- | --- | --- | --- |
+# | `fig5-rs-ys-competition` | `fig5-rs-ys-competition` | 22 | — |
+# | `fig5-rs-ys-competition` | `fig5-rs-ys-competition` | 22 | — |
+# | `fig5-rs-ys-competition` | `fig5-rs-ys-competition` | 22 | — |
+
+# ### Specification (process-bigraph) — load, inspect, edit
+#
+# Each composite is a process-bigraph *document*: named processes (`_type: process`) bound to an `address`, wired by `inputs`/`outputs` ports over shared stores. For every composite below the first cell loads the spec into a plain **editable Python dict** and prints its structure; the second cell is a **control panel** listing every configuration value and per-process `interval` so you can tweak any of them. Your edits are read when the composite is built and run, in the **Run** section.
+
+# **Composite `fig5-rs-ys-competition`** — `spec_fig5_rs_ys_competition` (a plain, editable dict)
+
+from viva_superpowers.composite_spec import load_spec
+spec_fig5_rs_ys_competition = load_spec(REPO / 'viva_biofilm/composites/fig5-rs-ys-competition.composite.yaml')
+describe_spec(spec_fig5_rs_ys_competition)
 
 # ### Run
 #
@@ -160,7 +176,29 @@ STUDY_DIR = REPO / 'workspace/studies' / STUDY
 STUDY_YAML = str(STUDY_DIR / "study.yaml")
 RUNS_DB = str(STUDY_DIR / "runs.db")
 
-print("No recorded runs for this study; nothing to reproduce.")
+# Runtime knobs — edit freely. STEPS = number of composite steps;
+# INTERVAL = global dt filling ${interval} placeholders (a per-process
+# interval pinned in the edit cell above takes precedence).
+STEPS_fig5_rs_ys_competition = 22
+INTERVAL_fig5_rs_ys_competition = 0.1
+STEPS_fig5_rs_ys_competition = 22
+INTERVAL_fig5_rs_ys_competition = 0.1
+STEPS_fig5_rs_ys_competition = 22
+INTERVAL_fig5_rs_ys_competition = 0.1
+
+if RERUN:
+    with quiet():  # the sim prints per-step progress; keep it out of the notebook
+        # Generic process-bigraph protocol (no workspace runner detected):
+        from viva_superpowers.composite_spec import build_composite_from_spec
+        comp = build_composite_from_spec(spec_fig5_rs_ys_competition, {'interval': INTERVAL_fig5_rs_ys_competition}, core=core)
+        comp.run(STEPS_fig5_rs_ys_competition)  # writes the composite's declared emitter
+        comp = build_composite_from_spec(spec_fig5_rs_ys_competition, {'interval': INTERVAL_fig5_rs_ys_competition}, core=core)
+        comp.run(STEPS_fig5_rs_ys_competition)  # writes the composite's declared emitter
+        comp = build_composite_from_spec(spec_fig5_rs_ys_competition, {'interval': INTERVAL_fig5_rs_ys_competition}, core=core)
+        comp.run(STEPS_fig5_rs_ys_competition)  # writes the composite's declared emitter
+    print(f'ran 3 simulation(s) -> {RUNS_DB}')
+else:
+    print("RERUN=False — rendering committed", RUNS_DB)
 
 # ### Visualizations
 #

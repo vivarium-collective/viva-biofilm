@@ -133,6 +133,20 @@ def describe_spec(spec):
 # solution 2·e^(−0.1t)?
 
 # ### Parameters
+#
+# | simulation | composite | steps | params |
+# | --- | --- | --- | --- |
+# | `chemostat-equivalence` | `chemostat-equivalence` | 601 | — |
+
+# ### Specification (process-bigraph) — load, inspect, edit
+#
+# Each composite is a process-bigraph *document*: named processes (`_type: process`) bound to an `address`, wired by `inputs`/`outputs` ports over shared stores. For every composite below the first cell loads the spec into a plain **editable Python dict** and prints its structure; the second cell is a **control panel** listing every configuration value and per-process `interval` so you can tweak any of them. Your edits are read when the composite is built and run, in the **Run** section.
+
+# **Composite `chemostat-equivalence`** — `spec_chemostat_equivalence` (a plain, editable dict)
+
+from viva_superpowers.composite_spec import load_spec
+spec_chemostat_equivalence = load_spec(REPO / 'viva_biofilm/composites/chemostat-equivalence.composite.yaml')
+describe_spec(spec_chemostat_equivalence)
 
 # ### Run
 #
@@ -144,7 +158,21 @@ STUDY_DIR = REPO / 'workspace/studies' / STUDY
 STUDY_YAML = str(STUDY_DIR / "study.yaml")
 RUNS_DB = str(STUDY_DIR / "runs.db")
 
-print("No recorded runs for this study; nothing to reproduce.")
+# Runtime knobs — edit freely. STEPS = number of composite steps;
+# INTERVAL = global dt filling ${interval} placeholders (a per-process
+# interval pinned in the edit cell above takes precedence).
+STEPS_chemostat_equivalence = 601
+INTERVAL_chemostat_equivalence = 0.1
+
+if RERUN:
+    with quiet():  # the sim prints per-step progress; keep it out of the notebook
+        # Generic process-bigraph protocol (no workspace runner detected):
+        from viva_superpowers.composite_spec import build_composite_from_spec
+        comp = build_composite_from_spec(spec_chemostat_equivalence, {'interval': INTERVAL_chemostat_equivalence}, core=core)
+        comp.run(STEPS_chemostat_equivalence)  # writes the composite's declared emitter
+    print(f'ran 1 simulation(s) -> {RUNS_DB}')
+else:
+    print("RERUN=False — rendering committed", RUNS_DB)
 
 # ### Visualizations
 #
