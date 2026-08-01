@@ -20,6 +20,7 @@ through the shared research dashboard.
 | `biofilm` | 2D single-species biofilm (reference model: Cockx et al. 2024): coccoid bacterium on solute+oxygen, reaction-diffusion PDE + agent relaxation + division + detachment. |
 | `biofilm_controlled` | Couples a BoundaryControllerProcess to the standard BiofilmProcess: the controller drives the oxygen boundary concentration on a fixed day schedule (drop at t=1d, restore at t=3d) through a shared bo… |
 | `chemostat` | Well-mixed chemostat (ODE reactor; reference model: Cockx et al. 2024); matches protocols/chemostat.xml: solute1 decays at 0.1/day into solute2. |
+| `competition` | 2D RS-vs-YS multi-strategy competition (Cockx et al. 2024 Fig. 5 reproduction): two coccoid bacterial strategies — a Rate Strategist (higher mu_max, lower yield) and a Yield Strategist (lower mu_max,… |
 <!-- END:composites -->
 
 ## Investigations
@@ -29,6 +30,7 @@ through the shared research dashboard.
 
 | Investigation | Research question |
 |---|---|
+| [Rate- vs Yield-Strategist competition: reproducing Cockx et al. 2024, Fig. 5 _(active)_](https://vivarium-collective.github.io/viva-biofilm/investigations/rate-yield-strategist-competition.html) | Cockx et al. 2024 (PLOS Comp Biol, "Is it selfish to be filamentous in biofilms?") introduce iDynoMiCS 2.0 and demonstrate it on a classic microbial-ecology question: does a Rate Strategist (faster g… |
 | [viva-biofilm capabilities: spatial structure, performance, and composability _(active)_](https://vivarium-collective.github.io/viva-biofilm/investigations/viva-biofilm-capabilities.html) | Beyond well-mixed equivalence to the reference model (the viva-biofilm-equivalence investigation), what does the viva-biofilm Rust + process-bigraph engine make possible that the Java tool does not:… |
 | [viva-biofilm: equivalence to a published biofilm model and viva-native capabilities _(active)_](https://vivarium-collective.github.io/viva-biofilm/investigations/viva-biofilm-equivalence.html) | Can a clean-room Rust reimplementation of a published individual-based biofilm model (Cockx et al. 2024), wrapped as viva processes, reproduce the real engine's aggregate observables while unlocking… |
 <!-- END:investigations -->
