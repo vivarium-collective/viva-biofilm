@@ -19,6 +19,13 @@ SEQUENTIAL_SCALE = "Viridis"
 # an accessible, colorblind-safe set — never cycled, assigned in this fixed order.
 SPECIES_PALETTE = ["#1B9E77", "#D95F02", "#7570B3", "#E7298A", "#66A61E", "#E6AB02"]
 
+# Fixed two-color palette for the RS-vs-YS strategy competition (Cockx et al.
+# 2024 Fig. 5): Rate Strategist blue, Yield Strategist red — mirroring the
+# paper's own coloring of the two strategies. Species/strategy index 0 = RS,
+# index 1 = YS (see viva_biofilm.run.competition_spec).
+STRATEGY_PALETTE = {0: "#2166AC", 1: "#B2182B"}
+STRATEGY_NAMES = {0: "RS", 1: "YS"}
+
 PAPER_BGCOLOR = "white"
 PLOT_BGCOLOR = "#F7F7F7"
 FONT = dict(size=13, color="#222222")
@@ -335,6 +342,120 @@ def growth_curves_figure(snapshots: list[dict]) -> go.Figure:
     fig.update_yaxes(title_text="µm", row=3, col=1, showgrid=True, gridcolor="#E5E5E5")
 
     return fig
+
+
+def strategy_colony_figure(snapshot: dict, dx: float = 1.5625, title: str | None = None) -> go.Figure:
+    """Colony scatter colored by STRATEGY identity (RS vs YS), not a continuous
+    field. Same true-to-scale radius / domain box / substratum line treatment
+    as ``colony_figure``, but color is a fixed two-way categorical split —
+    RS blue, YS red (see ``STRATEGY_PALETTE``) — reading ``agents["species"]``
+    (0 = RS, 1 = YS) rather than a sequential colorscale.
+    """
+    agents = snapshot["agents"]
+    species = agents["species"]
+    x_max, y_max = _domain_extent(snapshot, dx)
+
+    domain_box_trace = go.Scatter(
+        x=[0, x_max, x_max, 0, 0], y=[0, 0, y_max, y_max, 0],
+        mode="lines", line=dict(color="rgba(80,80,80,0.4)", width=1, dash="dot"),
+        name="domain", hoverinfo="skip", showlegend=False,
+    )
+    substratum_trace = go.Scatter(
+        x=[0, x_max], y=[0, 0], mode="lines",
+        line=dict(color="#8B5A2B", width=3), name="substratum",
+        hoverinfo="skip", showlegend=False,
+    )
+    traces = [domain_box_trace, substratum_trace]
+
+    for idx in sorted(STRATEGY_NAMES):
+        xs = [x for x, s in zip(agents["x"], species) if int(s) == idx]
+        ys = [y for y, s in zip(agents["y"], species) if int(s) == idx]
+        radii = [r for r, s in zip(agents["radius"], species) if int(s) == idx]
+        sizes = _radius_to_pixel_size(radii, x_max)
+        traces.append(go.Scatter(
+            x=xs, y=ys, mode="markers",
+            marker=dict(
+                size=sizes,
+                color=STRATEGY_PALETTE[idx],
+                line=dict(width=0.6, color="rgba(30,30,30,0.35)"),
+                opacity=0.9,
+            ),
+            name=f"{STRATEGY_NAMES[idx]} (n={len(xs)})",
+            hovertemplate=f"{STRATEGY_NAMES[idx]}<br>" + "x=%{x:.1f} µm<br>y=%{y:.1f} µm<extra></extra>",
+        ))
+
+    top_agent = max(agents["y"], default=0.0)
+    view_h = min(y_max, max(top_agent * 1.5, 16.0))
+
+    fig_title = title or f"Strategy colony — t={snapshot['time']:.2f} d, n={snapshot['population']}"
+    layout = _base_layout(fig_title)
+    layout.update(
+        height=460,
+        xaxis=dict(title="x (µm)", range=[0, x_max], constrain="domain",
+                   showgrid=False, zeroline=False),
+        yaxis=dict(
+            title="height above substratum (µm)",
+            range=[0, view_h],
+            scaleanchor="x",
+            scaleratio=1,
+            constrain="domain",
+            showgrid=False,
+            zeroline=False,
+        ),
+        showlegend=True,
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
+    )
+    return go.Figure(data=traces, layout=layout)
+
+
+def competition_outcome_figure(results: list[dict], title: str | None = None) -> go.Figure:
+    """RS biomass-fraction vs seeding density, with the tie (0.5) line marked.
+
+    ``results`` is a list of ``{"n_each": <seeding density per strategy>,
+    "rs_fraction": <RS/(RS+YS) biomass fraction at that density>}`` dicts
+    (Cockx et al. 2024 Fig. 5's density sweep: 5, 10, 50 cells per strategy).
+    Points are colored by which strategy is ahead at that density (RS blue
+    >= 0.5, YS red < 0.5), echoing ``strategy_colony_figure``'s palette.
+    """
+    results = sorted(results, key=lambda r: r["n_each"])
+    xs = [r["n_each"] for r in results]
+    ys = [r["rs_fraction"] for r in results]
+    marker_colors = [STRATEGY_PALETTE[0] if f >= 0.5 else STRATEGY_PALETTE[1] for f in ys]
+
+    x_pad = 0.5
+    x_lo = (min(xs) - x_pad) if xs else 0.0
+    x_hi = (max(xs) + x_pad) if xs else 1.0
+
+    tie_trace = go.Scatter(
+        x=[x_lo, x_hi], y=[0.5, 0.5], mode="lines",
+        line=dict(color="#999999", width=1, dash="dash"),
+        name="tie (0.5)", hoverinfo="skip",
+    )
+    outcome_trace = go.Scatter(
+        x=xs, y=ys, mode="lines+markers",
+        line=dict(color="#555555", width=2, dash="dot"),
+        marker=dict(size=14, color=marker_colors, line=dict(width=1, color="white")),
+        name="RS biomass fraction",
+        hovertemplate="n_each=%{x}<br>RS fraction=%{y:.3f}<extra></extra>",
+    )
+
+    fig_title = title or "Competition outcome vs seeding density"
+    layout = _base_layout(fig_title)
+    layout.update(
+        height=440,
+        xaxis=dict(title="seeding density (agents per strategy, n_each)",
+                   range=[x_lo, x_hi], showgrid=False, zeroline=False),
+        yaxis=dict(title="RS biomass fraction  [RS / (RS+YS)]", range=[0, 1],
+                   showgrid=True, gridcolor="#E5E5E5", zeroline=False),
+        annotations=[
+            dict(x=0.98, xref="paper", y=0.75, yref="y", text="RS wins",
+                 showarrow=False, font=dict(color=STRATEGY_PALETTE[0], size=12), xanchor="right"),
+            dict(x=0.98, xref="paper", y=0.25, yref="y", text="YS wins",
+                 showarrow=False, font=dict(color=STRATEGY_PALETTE[1], size=12), xanchor="right"),
+        ],
+        showlegend=False,
+    )
+    return go.Figure(data=[tie_trace, outcome_trace], layout=layout)
 
 
 def save_html(fig: go.Figure, path: str) -> None:

@@ -1,0 +1,55 @@
+{
+  "schema": "report_card_verdict/v1",
+  "groups": {
+    "competition": {
+      "axes": [
+        {
+          "name": "both-strategies-simulated",
+          "verdict": "within_tol",
+          "value": {
+            "5": [
+              1068,
+              160
+            ],
+            "10": [
+              1280,
+              320
+            ],
+            "50": [
+              1600,
+              800
+            ]
+          },
+          "reference": "both > 0 at every density"
+        },
+        {
+          "name": "outcome-is-density-dependent",
+          "verdict": "within_tol",
+          "value": {
+            "5": 0.8251443481586657,
+            "10": 0.8217878150186546,
+            "50": 0.7657838032020002
+          },
+          "reference": 0.02,
+          "note": "max-min RS-fraction spread across densities = 0.0594"
+        }
+      ]
+    },
+    "paper-fidelity": {
+      "axes": [
+        {
+          "name": "matches-paper-direction",
+          "verdict": "drift",
+          "value": {
+            "5": 0.8251443481586657,
+            "10": 0.8217878150186546,
+            "50": 0.7657838032020002
+          },
+          "reference": "paper: YS low, RS intermediate, YS high (non-monotonic flip)",
+          "note": "RS fraction decreases monotonically with seeding density (qualitative direction matches the paper's high-density YS-favoring trend), but RS remains dominant (fraction > 0.5) at every density tested -- no outright YS win, and no low-density YS-favored / intermediate-density RS-favored flip as the paper reports. Shortened 4-day horizon (vs the paper's 21 days) is the leading suspect: the paper's flip may only emerge as the biofilm matures and becomes more strongly diffusion-limited. This axis is intentionally NON-GATING (see study.yaml's paper-flip-fidelity supporting test) -- it documents the gap honestly rather than being silently dropped or folded into the gating 'competition' group's verdict.",
+          "gating": false
+        }
+      ]
+    }
+  }
+}

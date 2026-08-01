@@ -15,6 +15,18 @@ pub struct World {
     solute_names: Vec<String>,
     solute_index: HashMap<String, usize>,
     density: f64,
+    // Number of strategies registered via `add_species`. `CoreWorld::new()`
+    // always pre-populates a `species[0]` placeholder (for the old
+    // single-species API's backward-compat shim — see `world.rs`), so a
+    // naive `inner.add_species(...)` delegation would make the *first*
+    // multi-strategy species land at index 1, not 0 (mirrored by the
+    // Rust-level `competition.rs` test, which explicitly claims index 0 via
+    // `set_species` and only uses `add_species` for the second strategy
+    // onward). We track the count here so `add_species`'s first call can
+    // claim that pre-populated slot 0 via `set_species` instead of pushing
+    // a redundant, always-empty species[1], keeping the Python-facing API
+    // 0-indexed and matching the multi-strategy competition test/notebook.
+    species_count: usize,
 }
 
 #[pymethods]
@@ -27,6 +39,7 @@ impl World {
             solute_names: Vec::new(),
             solute_index: HashMap::new(),
             density: 0.15,
+            species_count: 0,
         }
     }
 
@@ -99,6 +112,41 @@ impl World {
         self.inner.spawn_agents(n, band_height, seed_offset);
     }
 
+    /// Registers a new strategy/species (empty reactions; add its kinetics
+    /// via `add_reaction_for`). Returns the species index. The first call
+    /// claims `CoreWorld`'s pre-populated `species[0]` placeholder slot (via
+    /// `set_species`, matching the Rust-level `competition.rs` pattern) so
+    /// the first strategy is index 0, not 1; subsequent calls delegate to
+    /// `inner.add_species`.
+    fn add_species(&mut self, density: f64, division_mass: f64) -> usize {
+        let idx = if self.species_count == 0 {
+            self.inner.set_species(density, division_mass);
+            self.density = density;
+            0
+        } else {
+            self.inner.add_species(density, division_mass)
+        };
+        self.species_count += 1;
+        idx
+    }
+
+    /// Appends a reaction to an existing species (see `add_species`).
+    fn add_reaction_for(
+        &mut self,
+        species_idx: usize,
+        mu_max: f64,
+        monod_terms: Vec<(usize, f64)>,
+        yields: Vec<(usize, f64)>,
+    ) {
+        self.inner.add_reaction_for(species_idx, mu_max, monod_terms, yields);
+    }
+
+    /// Spawns `n` agents of `species_idx` distributed at alternating,
+    /// roughly equidistant x-positions along the substratum band.
+    fn spawn_distributed(&mut self, species_idx: usize, n: usize, band_height: f64, seed_offset: u64) {
+        self.inner.spawn_distributed(species_idx, n, band_height, seed_offset);
+    }
+
     fn finalize(&mut self, seed: u64) {
         self.inner.finalize(seed);
     }
@@ -117,6 +165,16 @@ impl World {
 
     fn total_biomass(&self) -> f64 {
         self.inner.total_biomass()
+    }
+
+    /// Live agent count for a single species/strategy.
+    fn population_of(&self, species_idx: usize) -> usize {
+        self.inner.population_of(species_idx)
+    }
+
+    /// Summed live-agent mass for a single species/strategy.
+    fn biomass_of(&self, species_idx: usize) -> f64 {
+        self.inner.biomass_of(species_idx)
     }
 
     fn biofilm_thickness(&self) -> f64 {
