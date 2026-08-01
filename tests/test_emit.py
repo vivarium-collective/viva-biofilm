@@ -1,9 +1,8 @@
 """Tests for viva_biofilm.emit — study runs registered for the dashboard."""
+import json
 import sqlite3
 
-import pandas as pd
-
-from viva_biofilm.emit import emit_run, _observables_frame
+from viva_biofilm.emit import emit_run, _observable_state
 
 
 def _biofilm_snaps():
@@ -15,35 +14,35 @@ def _biofilm_snaps():
     ]
 
 
-def test_emit_run_writes_parquet_and_runs_meta(tmp_path):
+def test_emit_run_writes_runs_meta_and_history(tmp_path):
     # run_id is namespaced with the study slug so it's workspace-unique.
     run_id = emit_run(tmp_path, spec_id="my-study", snaps=_biofilm_snaps())
     assert run_id == "my-study-baseline"
 
-    parquet = tmp_path / "out" / "my-study-baseline" / "observables.parquet"
-    assert parquet.is_file()
-    df = pd.read_parquet(parquet)
-    assert len(df) == 2
-    # scalars carried through + solute field summarized
-    for col in ("time", "population", "total_biomass", "biofilm_thickness",
-                "solute_oxygen_mean", "solute_oxygen_min", "solute_oxygen_max"):
-        assert col in df.columns
-
     runs_db = tmp_path / "runs.db"
     assert runs_db.is_file()
-    rows = sqlite3.connect(runs_db).execute(
-        "SELECT run_id, spec_id, label, status, n_steps, emitter_path FROM runs_meta").fetchall()
-    assert rows == [("my-study-baseline", "my-study", "baseline", "completed", 2,
-                     "out/my-study-baseline")]
+    conn = sqlite3.connect(runs_db)
+    rows = conn.execute(
+        "SELECT run_id, spec_id, label, status, n_steps FROM runs_meta").fetchall()
+    assert rows == [("my-study-baseline", "my-study", "baseline", "completed", 2)]
+
+    # history in the SQLiteEmitter schema: one row per step, state a JSON dict.
+    hist = conn.execute(
+        "SELECT simulation_id, step, global_time, state FROM history ORDER BY step").fetchall()
+    assert len(hist) == 2
+    assert hist[0][:3] == ("my-study-baseline", 0, 0.0)
+    st = json.loads(hist[1][3])
+    assert st["population"] == 80 and st["biofilm_thickness"] == 2.0
+    for k in ("solute_oxygen_mean", "solute_oxygen_min", "solute_oxygen_max"):
+        assert k in st
+    # No legacy parquet dir is written.
+    assert not (tmp_path / "out").exists()
 
 
-def test_observables_frame_carries_arbitrary_scalars():
+def test_observable_state_carries_arbitrary_scalars():
     # A chemostat-style study emits plain scalar observables (no biofilm fields).
-    snaps = [{"time": 0.0, "solute1": 2.0, "solute1_analytic": 2.0},
-             {"time": 1.0, "solute1": 1.81, "solute1_analytic": 1.81}]
-    df = _observables_frame(snaps)
-    assert list(df.columns) == ["step", "time", "solute1", "solute1_analytic"]
-    assert df["solute1"].tolist() == [2.0, 1.81]
+    st = _observable_state({"time": 1.0, "solute1": 1.81, "solute1_analytic": 1.81})
+    assert st == {"time": 1.0, "solute1": 1.81, "solute1_analytic": 1.81}
 
 
 def test_emit_run_multi_run_accumulates(tmp_path):
@@ -52,8 +51,10 @@ def test_emit_run_multi_run_accumulates(tmp_path):
     ids = {r[0] for r in sqlite3.connect(tmp_path / "runs.db").execute(
         "SELECT run_id FROM runs_meta")}
     assert ids == {"s-a", "s-b"}
-    assert (tmp_path / "out" / "s-a" / "observables.parquet").is_file()
-    assert (tmp_path / "out" / "s-b" / "observables.parquet").is_file()
+    # both runs' history present
+    counts = dict(sqlite3.connect(tmp_path / "runs.db").execute(
+        "SELECT simulation_id, count(*) FROM history GROUP BY simulation_id"))
+    assert counts == {"s-a": 2, "s-b": 2}
 
 
 def test_emit_run_ids_are_study_namespaced_for_global_uniqueness(tmp_path):
@@ -67,9 +68,10 @@ def test_emit_run_ids_are_study_namespaced_for_global_uniqueness(tmp_path):
 
 def test_emit_run_reset_clears_stale(tmp_path):
     emit_run(tmp_path, spec_id="s", snaps=_biofilm_snaps(), run_id="old", reset=True)
-    # A fresh reset run must drop the stale "old" row + its out dir.
+    # A fresh reset run must drop the stale "old" row + its history.
     emit_run(tmp_path, spec_id="s", snaps=_biofilm_snaps(), run_id="new", reset=True)
-    ids = {r[0] for r in sqlite3.connect(tmp_path / "runs.db").execute(
-        "SELECT run_id FROM runs_meta")}
+    conn = sqlite3.connect(tmp_path / "runs.db")
+    ids = {r[0] for r in conn.execute("SELECT run_id FROM runs_meta")}
     assert ids == {"s-new"}
-    assert not (tmp_path / "out" / "s-old").exists()
+    hist_ids = {r[0] for r in conn.execute("SELECT DISTINCT simulation_id FROM history")}
+    assert hist_ids == {"s-new"}
