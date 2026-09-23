@@ -104,11 +104,11 @@ def _write_zarr(study_dir: Path, full_id: str, snaps: list[dict]) -> None:
 
     Driven standalone (no Composite) and bulk over the already-subsampled scalar
     snapshots, so there is no per-tick full-state accumulation. Raises if
-    ``pbg-emitters[xarray]`` is unavailable so the caller can fall back to sqlite.
+    ``viva-emitters[xarray]`` is unavailable so the caller can fall back to sqlite.
     """
     from bigraph_schema import allocate_core
-    from pbg_emitters.xarray_emitter import XArrayEmitter
-    from pbg_emitters.xarray_emitter.view import view_from_emit_paths
+    from viva_emitters.xarray_emitter import XArrayEmitter
+    from viva_emitters.xarray_emitter.view import view_from_emit_paths
 
     states = [_observable_state(s) for s in snaps]
     # `time`/`step` are the run's coordinate (emitted as global_time), not
@@ -146,7 +146,7 @@ def emit_run(study_dir, spec_id: str, snaps: list[dict], *,
     - ``"xarray"`` (default, PREFERRED): the time-series is written to
       ``<study_dir>/runs.<full_id>.zarr`` via the process-bigraph
       ``XArrayEmitter`` — the ecosystem's preferred store. Falls back to sqlite
-      if ``pbg-emitters[xarray]`` is unavailable.
+      if ``viva-emitters[xarray]`` is unavailable.
     - ``"sqlite"``: the time-series is written to a ``history`` table in
       ``runs.db`` (the process_bigraph SQLiteEmitter schema).
 
@@ -190,7 +190,7 @@ def emit_run(study_dir, spec_id: str, snaps: list[dict], *,
         try:
             _write_zarr(study_dir, full_id, snaps)
         except Exception:
-            # pbg-emitters[xarray] missing, or a short run (< the emitter's
+            # viva-emitters[xarray] missing, or a short run (< the emitter's
             # buffer size) — drop any partial store and fall back to sqlite.
             partial = study_dir / f"runs.{full_id}.zarr"
             if partial.exists():
