@@ -132,7 +132,32 @@ def describe_spec(spec):
     print("\nfull editable spec dict:")
     print(_json.dumps(spec, indent=2, default=str))
 
-# ## Study: `spatial-biofilm-growth`
+import base64 as _b64, pathlib as _pl
+def _render_one(address, config, runs_db, study_yaml):
+    """Generic figure renderer (no workspace render_study_viz.py):
+    resolve an ``image:<relpath>`` visualization to displayable HTML,
+    relative to the study directory."""
+    addr = str(address or '')
+    for _scheme in ('image:', 'file:', 'gif:', 'png:', 'svg:', 'jpg:', 'jpeg:'):
+        if addr.startswith(_scheme):
+            addr = addr[len(_scheme):]; break
+    _p = _pl.Path(addr)
+    if not _p.is_absolute():
+        _p = _pl.Path(study_yaml).resolve().parent / _p
+    if not _p.is_file():
+        return f'<p style="color:#b91c1c">figure not found: {address}</p>'
+    _suffix = _p.suffix.lower()
+    if _suffix == '.svg':
+        return _p.read_text(encoding='utf-8', errors='replace')
+    if _suffix in ('.png', '.jpg', '.jpeg', '.gif', '.webp'):
+        _mime = 'jpeg' if _suffix in ('.jpg', '.jpeg') else _suffix[1:]
+        _data = _b64.b64encode(_p.read_bytes()).decode('ascii')
+        return f'<img src="data:image/{_mime};base64,{_data}" style="max-width:100%"/>'
+    if _suffix in ('.html', '.htm'):
+        return _p.read_text(encoding='utf-8', errors='replace')
+    return f'<p style="color:#6b7280">unsupported figure type: {address}</p>'
+
+# ## Study: Spatial biofilm growth: a developed colony with a real substrate gradient (`spatial-biofilm-growth`)
 #
 # **Question.** Starting from a small inoculum of 40 agents, does the viva-biofilm spatial
 # engine grow a visibly developed 2D biofilm — hundreds of agents, a
@@ -152,9 +177,7 @@ def describe_spec(spec):
 
 # **Composite `spatial-biofilm-growth`** — `spec_spatial_biofilm_growth` (a plain, editable dict)
 
-from viva_superpowers.composite_spec import load_spec
-spec_spatial_biofilm_growth = load_spec(REPO / 'viva_biofilm/composites/spatial-biofilm-growth.composite.yaml')
-describe_spec(spec_spatial_biofilm_growth)
+# _composite spec file for `spatial-biofilm-growth` not found under `viva_biofilm/composites/` — skipped._
 
 # ### Run
 #
@@ -232,7 +255,7 @@ _save_viz('spatial-biofilm-growth', 'growth_curves', _render_one('image:charts/g
 # | --- | --- | --- |
 # | developed-biofilm-structure | kind=report_card_axis card=workspace/studies/spatial-biofilm-growth/viz/report_card group=spatial-structure | op verdict_at_least level within_tol |
 
-# ## Study: `runtime-and-scaling`
+# ## Study: Runtime and scaling: throughput and scaling curves for the Rust engine (`runtime-and-scaling`)
 #
 # **Question.** After the ~23x performance pass and the addition of configurable PDE
 # parameters, how does the viva-biofilm engine's wall-time scale with grid
@@ -251,9 +274,7 @@ _save_viz('spatial-biofilm-growth', 'growth_curves', _render_one('image:charts/g
 
 # **Composite `runtime-and-scaling`** — `spec_runtime_and_scaling` (a plain, editable dict)
 
-from viva_superpowers.composite_spec import load_spec
-spec_runtime_and_scaling = load_spec(REPO / 'viva_biofilm/composites/runtime-and-scaling.composite.yaml')
-describe_spec(spec_runtime_and_scaling)
+# _composite spec file for `runtime-and-scaling` not found under `viva_biofilm/composites/` — skipped._
 
 # ### Run
 #
@@ -313,7 +334,7 @@ _save_viz('runtime-and-scaling', 'throughput', _render_one('image:charts/through
 # | --- | --- | --- |
 # | throughput-and-scaling-measured | kind=report_card_axis card=workspace/studies/runtime-and-scaling/viz/report_card group=performance | op verdict_at_least level within_tol |
 
-# ## Study: `composability`
+# ## Study: Composability: a boundary controller process perturbing the biofilm at runtime (`composability`)
 #
 # **Question.** Does viva-biofilm's boundary_concentrations runtime hook (the Task 6
 # set_bulk_by_name binding) actually compose with an external
@@ -335,9 +356,7 @@ _save_viz('runtime-and-scaling', 'throughput', _render_one('image:charts/through
 
 # **Composite `composability`** — `spec_composability` (a plain, editable dict)
 
-from viva_superpowers.composite_spec import load_spec
-spec_composability = load_spec(REPO / 'viva_biofilm/composites/composability.composite.yaml')
-describe_spec(spec_composability)
+# _composite spec file for `composability` not found under `viva_biofilm/composites/` — skipped._
 
 # ### Run
 #

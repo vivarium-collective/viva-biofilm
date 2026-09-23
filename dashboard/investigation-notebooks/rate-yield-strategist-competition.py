@@ -137,7 +137,32 @@ def describe_spec(spec):
     print("\nfull editable spec dict:")
     print(_json.dumps(spec, indent=2, default=str))
 
-# ## Study: `fig5-rs-ys-competition`
+import base64 as _b64, pathlib as _pl
+def _render_one(address, config, runs_db, study_yaml):
+    """Generic figure renderer (no workspace render_study_viz.py):
+    resolve an ``image:<relpath>`` visualization to displayable HTML,
+    relative to the study directory."""
+    addr = str(address or '')
+    for _scheme in ('image:', 'file:', 'gif:', 'png:', 'svg:', 'jpg:', 'jpeg:'):
+        if addr.startswith(_scheme):
+            addr = addr[len(_scheme):]; break
+    _p = _pl.Path(addr)
+    if not _p.is_absolute():
+        _p = _pl.Path(study_yaml).resolve().parent / _p
+    if not _p.is_file():
+        return f'<p style="color:#b91c1c">figure not found: {address}</p>'
+    _suffix = _p.suffix.lower()
+    if _suffix == '.svg':
+        return _p.read_text(encoding='utf-8', errors='replace')
+    if _suffix in ('.png', '.jpg', '.jpeg', '.gif', '.webp'):
+        _mime = 'jpeg' if _suffix in ('.jpg', '.jpeg') else _suffix[1:]
+        _data = _b64.b64encode(_p.read_bytes()).decode('ascii')
+        return f'<img src="data:image/{_mime};base64,{_data}" style="max-width:100%"/>'
+    if _suffix in ('.html', '.htm'):
+        return _p.read_text(encoding='utf-8', errors='replace')
+    return f'<p style="color:#6b7280">unsupported figure type: {address}</p>'
+
+# ## Study: RS vs YS competition: does seeding density decide the winner? (`fig5-rs-ys-competition`)
 #
 # **Question.** Cockx et al. 2024 (Fig. 5) report that when a Rate Strategist (RS — faster
 # growth, lower yield) competes against a Yield Strategist (YS — slower
@@ -162,9 +187,7 @@ def describe_spec(spec):
 
 # **Composite `fig5-rs-ys-competition`** — `spec_fig5_rs_ys_competition` (a plain, editable dict)
 
-from viva_superpowers.composite_spec import load_spec
-spec_fig5_rs_ys_competition = load_spec(REPO / 'viva_biofilm/composites/fig5-rs-ys-competition.composite.yaml')
-describe_spec(spec_fig5_rs_ys_competition)
+# _composite spec file for `fig5-rs-ys-competition` not found under `viva_biofilm/composites/` — skipped._
 
 # ### Run
 #
