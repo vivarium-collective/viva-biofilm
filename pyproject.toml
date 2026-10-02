@@ -4,9 +4,9 @@ build-backend = "maturin"
 
 [project]
 name = "viva-biofilm"
-version = "0.1.0"
+version = "0.1.1"
 requires-python = ">=3.12"
-dependencies = ["process-bigraph", "bigraph-schema"]
+dependencies = ["process-bigraph>=1.8.5", "bigraph-schema", "viva-emitters>=0.4.2"]
 
 [project.optional-dependencies]
 dev = ["pytest", "maturin>=1.5,<2", "numpy", "plotly", "pyyaml", "vivarium-workbench", "kaleido", "pandas", "pyarrow"]
