@@ -6,6 +6,7 @@ build-backend = "maturin"
 name = "viva-biofilm"
 version = "0.1.1"
 description = "A fast individual-based biofilm simulation library with a Rust engine wrapped as process-bigraph processes."
+license = { text = "MIT" }
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = ["process-bigraph>=1.8.5", "bigraph-schema", "viva-emitters>=0.4.2"]
@@ -17,6 +18,7 @@ dev = ["pytest", "maturin>=1.5,<2", "numpy", "plotly", "pyyaml", "vivarium-workb
 manifest-path = "crates/biofilm-py/Cargo.toml"
 module-name = "viva_biofilm.biofilm_core"
 python-source = "."
+include = ["LICENSE"]
 
 # vivarium-workbench is not published to PyPI — resolve the dev extra's plain
 # "vivarium-workbench" entry from its git repo (uv applies sources to direct
