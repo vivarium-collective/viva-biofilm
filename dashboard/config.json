@@ -1,7 +1,7 @@
 {
   "mode": "snapshot",
   "smsApiBase": "",
-  "repo": "https://github.com/vivarium-collective/viva-biofilm.git",
-  "commit": "a02c10aca643b38de5527d5988e48ea03af9c1d8",
+  "repo": "https://github.com/vivarium-collective/viva-biofilm",
+  "commit": "c0713bbea8d3c2dd864c7c5078a209dece1cde3f",
   "generated_from_ref": "main"
 }
