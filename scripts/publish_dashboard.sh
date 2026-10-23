@@ -3,21 +3,21 @@
 # SPA bundle (all investigations + studies + assets) that anyone can browse
 # with no server. Built by vivarium-workbench-publish; the same build is used
 # locally (to practice/preview) and by
-# .github/workflows/publish-dashboard.yml (to publish to gh-pages:dashboard/).
+# .github/workflows/publish-dashboard.yml (to publish to gh-pages:workbench/).
 #
 # Usage:
 #   .venv/bin/python -m vivarium_workbench ... (or, after `source .venv/bin/activate`)
 #   scripts/publish_dashboard.sh [OUT_DIR]
-#     OUT_DIR defaults to reports/published/dashboard
+#     OUT_DIR defaults to reports/published/workbench
 #
 # Preview locally:
 #   scripts/publish_dashboard.sh /tmp/dash
 #   python -m http.server -d /tmp/dash 8080   # -> http://localhost:8080/
 #
 # Notes:
-#   * --base-path /viva-biofilm/dashboard rewrites root-absolute URLs for
+#   * --base-path /viva-biofilm/workbench rewrites root-absolute URLs for
 #     GitHub Pages' project subpath (served at
-#     <user>.github.io/viva-biofilm/dashboard/).
+#     <user>.github.io/viva-biofilm/workbench/).
 #   * bigraph-loom source maps (~8MB, half the bundle) are stripped — a
 #     read-only viewer never needs them.
 #   * Needs `vivarium-workbench-publish` on PATH (via the activated .venv:
@@ -28,8 +28,8 @@
 set -euo pipefail
 
 WS_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-OUT="${1:-$WS_ROOT/reports/published/dashboard}"
-BASE_PATH="/viva-biofilm/dashboard"
+OUT="${1:-$WS_ROOT/reports/published/workbench}"
+BASE_PATH="/viva-biofilm/workbench"
 INTERACTIVE_URL="https://github.com/vivarium-collective/viva-biofilm"
 
 rm -rf "$OUT"
@@ -45,4 +45,4 @@ PYTHONPATH="$WS_ROOT${PYTHONPATH:+:$PYTHONPATH}" \
 find "$OUT" -name '*.map' -delete
 touch "$OUT/.nojekyll"
 
-echo "built read-only dashboard bundle at $OUT ($(du -sh "$OUT" | cut -f1))"
+echo "built read-only workbench bundle at $OUT ($(du -sh "$OUT" | cut -f1))"
